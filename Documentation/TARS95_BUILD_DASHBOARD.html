@@ -337,7 +337,7 @@
           <div class="readout-row"><span>BASELINE</span><span>7593f8c</span></div>
           <div class="readout-row"><span>SURFACES</span><span>PYGAME + WEB</span></div>
           <div class="readout-row"><span><i class="lamp amber"></i>BUILD STATE</span><span>IN PROGRESS</span></div>
-          <div class="readout-row"><span>NEXT ACTION</span><span>UI-002</span></div>
+          <div class="readout-row"><span>NEXT ACTION</span><span>UI-003</span></div>
         </aside>
       </div>
       <div class="stats">
@@ -379,7 +379,7 @@
               <li>Use the Pi only at explicit integration gates, not as the everyday design workstation.</li>
             </ol>
           </div>
-          <div class="callout"><strong>Setup command:</strong> <code>powershell -ExecutionPolicy Bypass -File .\tools\ui-preview\setup.ps1</code>. This creates <code>.venv-ui-preview</code> and installs only visual-preview packages; it does not install or invoke robot hardware modules.</div>
+          <div class="callout"><strong>Device preview:</strong> <code>.\.venv-ui-preview\Scripts\python.exe .\tools\ui-preview\device_preview.py --app eyes --size 480x320</code>. Use <code>--size 800x480</code> for the larger display; ESC quits and LEFT/RIGHT switches apps.</div>
         </div>
       </section>
     </div>
@@ -401,8 +401,8 @@
           <tbody>
             <tr class="phase-row" data-phase="0"><td colspan="5">Phase 0 — Make iteration cheap and safe</td></tr>
             <tr data-phase="0" data-state="done"><td class="id">UI-001</td><td><span class="status">Done</span></td><td class="task"><b>Add isolated preview dependencies and setup command</b><small>A fresh Windows environment can install only what visual preview needs; no robot install script required.</small></td><td>Tooling</td><td class="commit">chore(ui): add desktop preview dependencies</td></tr>
-            <tr data-phase="0" data-state="next"><td class="id">UI-002</td><td><span class="status">Next</span></td><td class="task"><b>Add hardware-safe pygame preview runner</b><small>Launches real 2D app classes at 480×320 and 800×480 with ESC-to-exit and zero GPIO/camera/audio access.</small></td><td>Device</td><td class="commit">feat(ui): add desktop device preview</td></tr>
-            <tr data-phase="0" data-state="planned"><td class="id">UI-003</td><td><span class="status">Planned</span></td><td class="task"><b>Add mock web dashboard server</b><small>Production templates and assets load locally with deterministic safe fixtures and no robot runtime imports.</small></td><td>Web</td><td class="commit">feat(webui): add mock preview server</td></tr>
+            <tr data-phase="0" data-state="done"><td class="id">UI-002</td><td><span class="status">Done</span></td><td class="task"><b>Add hardware-safe pygame preview runner</b><small>Launches real 2D app classes at 480×320 and 800×480 with ESC-to-exit and zero GPIO/camera/audio access.</small></td><td>Device</td><td class="commit">feat(ui): add desktop device preview</td></tr>
+            <tr data-phase="0" data-state="next"><td class="id">UI-003</td><td><span class="status">Next</span></td><td class="task"><b>Add mock web dashboard server</b><small>Production templates and assets load locally with deterministic safe fixtures and no robot runtime imports.</small></td><td>Web</td><td class="commit">feat(webui): add mock preview server</td></tr>
             <tr data-phase="0" data-state="planned"><td class="id">UI-004</td><td><span class="status">Planned</span></td><td class="task"><b>Add preview state controls</b><small>Reviewer can switch standby/listening/thinking/talking, battery, alerts, and connectivity without code edits.</small></td><td>Both</td><td class="commit">feat(ui): add preview state controls</td></tr>
             <tr data-phase="0" data-state="planned"><td class="id">UI-005</td><td><span class="status">Planned</span></td><td class="task"><b>Capture baseline review frames</b><small>Known-size screenshots exist for both device sizes and desktop/mobile web before the redesign starts.</small></td><td>Review</td><td class="commit">test(ui): capture baseline review frames</td></tr>
             <tr data-phase="0" data-state="planned"><td class="id">UI-006</td><td><span class="status">Planned</span></td><td class="task"><b>Add preview smoke tests</b><small>Imports, fixtures, main routes, and representative app renders fail fast in CI/local checks.</small></td><td>Tests</td><td class="commit">test(ui): add preview smoke coverage</td></tr>
@@ -472,7 +472,7 @@
             <div class="head">Action</div><div class="head">Commit / review evidence</div><div class="head">Decision</div>
             <div>PLAN-000</div><div>This dashboard; repository baseline 7593f8c.</div><div>READY</div>
             <div>UI-001</div><div>Isolated manifest + idempotent Windows setup; clean install, import verification, and repeat-run checks passed.</div><div>READY</div>
-            <div>UI-002</div><div>Pending</div><div>—</div>
+            <div>UI-002</div><div>Five real apps × two target sizes passed headless renders with production rotation and zero hardware attempts.</div><div>READY</div>
           </div>
           <div class="callout">Update the status row and ledger in the same commit as the work it records. The dashboard is the project record, not a second implementation stream.</div>
         </div>
