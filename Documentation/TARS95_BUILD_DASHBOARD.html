@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TARS/95 Build Control</title>
+  <style>
+    :root {
+      --desktop: #167c79;
+      --chrome: #c8c8c8;
+      --chrome-hi: #ffffff;
+      --chrome-mid: #8c8c8c;
+      --chrome-lo: #363636;
+      --ink: #080808;
+      --navy: #031c55;
+      --navy-hi: #075ca8;
+      --screen: #081116;
+      --screen-2: #101f22;
+      --phosphor: #c6ffdc;
+      --green: #38e878;
+      --amber: #ffb000;
+      --red: #f04436;
+      --paper: #e8e3d1;
+    }
+
+    * { box-sizing: border-box; }
+    html { background: #06110f; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 22% 18%, rgba(255,255,255,.07), transparent 28%),
+        linear-gradient(rgba(0,0,0,.08) 1px, transparent 1px),
+        var(--desktop);
+      background-size: auto, 100% 3px, auto;
+      font: 13px/1.35 Tahoma, "MS Sans Serif", sans-serif;
+    }
+
+    button, input { font: inherit; }
+
+    .crt {
+      position: fixed;
+      inset: 0;
+      z-index: 99;
+      pointer-events: none;
+      opacity: .2;
+      background: repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,.22) 2px 3px);
+      mix-blend-mode: multiply;
+    }
+
+    .desktop {
+      width: min(1440px, calc(100% - 28px));
+      margin: 14px auto 58px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .window {
+      padding: 3px;
+      background: var(--chrome);
+      border-top: 2px solid var(--chrome-hi);
+      border-left: 2px solid var(--chrome-hi);
+      border-right: 2px solid var(--chrome-lo);
+      border-bottom: 2px solid var(--chrome-lo);
+      box-shadow: 4px 5px 0 rgba(0,0,0,.35);
+    }
+
+    .titlebar {
+      min-height: 27px;
+      padding: 4px 5px 4px 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: white;
+      background: linear-gradient(90deg, var(--navy), var(--navy-hi));
+      font-weight: 700;
+      letter-spacing: .04em;
+    }
+
+    .titlebar .unit {
+      margin-left: auto;
+      color: #9ed7ff;
+      font: 10px "Courier New", monospace;
+      letter-spacing: .1em;
+    }
+
+    .win-controls { display: flex; gap: 3px; margin-left: 6px; }
+    .win-controls i {
+      width: 17px;
+      height: 16px;
+      display: grid;
+      place-items: center;
+      color: #111;
+      background: var(--chrome);
+      border-top: 1px solid white;
+      border-left: 1px solid white;
+      border-right: 1px solid #222;
+      border-bottom: 1px solid #222;
+      font: bold 10px monospace;
+      font-style: normal;
+    }
+
+    .hero-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(280px, .55fr);
+      gap: 3px;
+    }
+
+    .mission {
+      min-height: 235px;
+      padding: 22px;
+      position: relative;
+      overflow: hidden;
+      color: var(--phosphor);
+      background:
+        linear-gradient(90deg, rgba(56,232,120,.07) 1px, transparent 1px),
+        linear-gradient(rgba(56,232,120,.055) 1px, transparent 1px),
+        var(--screen);
+      background-size: 24px 24px;
+      border: 2px inset #eee;
+    }
+
+    .mission::after {
+      content: "TARS/95";
+      position: absolute;
+      right: -18px;
+      bottom: -27px;
+      color: rgba(56,232,120,.055);
+      font: 900 clamp(68px, 10vw, 144px)/1 Impact, sans-serif;
+      letter-spacing: -.05em;
+      transform: skew(-9deg);
+    }
+
+    .eyebrow, .mono {
+      font-family: "Courier New", monospace;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+    }
+
+    .eyebrow { color: var(--amber); font-size: 11px; }
+    h1 {
+      max-width: 850px;
+      margin: 8px 0 12px;
+      font: 900 clamp(30px, 5vw, 70px)/.91 Impact, Haettenschweiler, sans-serif;
+      letter-spacing: .015em;
+      text-transform: uppercase;
+    }
+    .mission p { max-width: 760px; margin: 0; font: 15px/1.5 "Courier New", monospace; }
+    .mission strong { color: white; }
+
+    .hazard {
+      height: 15px;
+      margin-top: 18px;
+      border: 1px solid #000;
+      background: repeating-linear-gradient(135deg, var(--amber) 0 11px, #111 11px 22px);
+    }
+
+    .readout {
+      padding: 15px;
+      color: #ddd;
+      background: #151515;
+      border: 2px inset #eee;
+      font-family: "Courier New", monospace;
+    }
+    .readout h2 { margin: 0 0 10px; color: white; font: bold 15px Tahoma, sans-serif; }
+    .readout-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      padding: 7px 0;
+      border-bottom: 1px dotted #555;
+    }
+    .readout-row span:last-child { color: var(--green); text-align: right; }
+    .lamp { display: inline-block; width: 8px; height: 8px; margin-right: 6px; background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .lamp.amber { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 3px;
+      margin-top: 3px;
+    }
+    .stat { min-height: 75px; padding: 11px 13px; background: var(--paper); border: 2px inset white; }
+    .stat b { display: block; font: 900 28px/1 "Courier New", monospace; color: var(--navy); }
+    .stat span { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .pane { padding: 14px; background: var(--chrome); }
+    .pane h2 { margin: 0 0 10px; font-size: 15px; }
+    .pane p { margin: 7px 0; }
+
+    .screen {
+      padding: 14px;
+      color: #d4e6de;
+      background: var(--screen-2);
+      border: 2px inset white;
+      font-family: "Courier New", monospace;
+    }
+    .screen h3 { margin: 0 0 8px; color: var(--amber); font-size: 12px; text-transform: uppercase; letter-spacing: .1em; }
+    .screen ol, .screen ul { margin: 8px 0 0; padding-left: 20px; }
+    .screen li { margin: 5px 0; }
+    code { color: #fff; background: #0a0a0a; padding: 2px 4px; }
+
+    .callout {
+      margin-top: 10px;
+      padding: 9px 10px;
+      color: #111;
+      background: #fff4bd;
+      border: 1px solid #6f5c00;
+      border-left: 8px solid var(--amber);
+    }
+
+    .toolbar {
+      padding: 7px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+      background: var(--chrome);
+      border-bottom: 2px groove white;
+    }
+    .toolbar button {
+      min-width: 82px;
+      padding: 5px 9px;
+      color: #111;
+      background: var(--chrome);
+      border-top: 2px solid white;
+      border-left: 2px solid white;
+      border-right: 2px solid #333;
+      border-bottom: 2px solid #333;
+      cursor: pointer;
+    }
+    .toolbar button:active, .toolbar button.active {
+      border-top-color: #333;
+      border-left-color: #333;
+      border-right-color: white;
+      border-bottom-color: white;
+      background: #b4b4b4;
+    }
+    .toolbar .legend { margin-left: auto; font: 10px "Courier New", monospace; }
+
+    .board { width: 100%; border-collapse: collapse; background: #efefef; }
+    .board th {
+      padding: 7px 8px;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      color: white;
+      background: #252525;
+      border: 1px solid #555;
+      text-align: left;
+      font-size: 10px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .board td { padding: 8px; border: 1px solid #999; vertical-align: top; }
+    .board tr:nth-child(even) td { background: #dfdfdf; }
+    .board tr[hidden] { display: none; }
+    .id { white-space: nowrap; font: bold 12px "Courier New", monospace; color: var(--navy); }
+    .task b { display: block; margin-bottom: 2px; }
+    .task small { color: #444; }
+    .status {
+      display: inline-block;
+      min-width: 72px;
+      padding: 2px 5px;
+      color: white;
+      background: #555;
+      border: 1px solid #111;
+      font: bold 10px "Courier New", monospace;
+      text-align: center;
+      text-transform: uppercase;
+    }
+    [data-state="next"] .status { color: #111; background: var(--amber); }
+    [data-state="done"] .status { background: #08713b; }
+    [data-state="blocked"] .status { background: #a7251d; }
+    .commit { font: 11px "Courier New", monospace; }
+    .phase-row td { color: white; background: var(--navy) !important; font-weight: bold; letter-spacing: .08em; text-transform: uppercase; }
+
+    .ledger { display: grid; grid-template-columns: 150px 1fr 120px; border: 1px solid #777; }
+    .ledger > div { min-height: 34px; padding: 8px; border-right: 1px solid #999; border-bottom: 1px solid #999; }
+    .ledger .head { color: white; background: #252525; font-weight: bold; }
+
+    .taskbar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 90;
+      min-height: 39px;
+      padding: 4px 7px;
+      display: flex;
+      gap: 7px;
+      align-items: center;
+      background: var(--chrome);
+      border-top: 2px solid white;
+    }
+    .start {
+      padding: 5px 10px;
+      border: 2px outset white;
+      font-weight: 900;
+    }
+    .task-button { flex: 0 1 330px; padding: 5px 9px; border: 2px inset white; background: #bdbdbd; }
+    .clock { margin-left: auto; padding: 5px 9px; border: 2px inset white; font: 11px "Courier New", monospace; }
+
+    @media (max-width: 850px) {
+      .hero-body, .grid-2 { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: 1fr 1fr; }
+      .board-wrap { overflow-x: auto; }
+      .board { min-width: 900px; }
+      .titlebar .unit, .task-button { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+  <div class="crt" aria-hidden="true"></div>
+  <main class="desktop">
+    <section class="window">
+      <header class="titlebar">
+        <span>TARS/95 Build Control — Project Directive</span>
+        <span class="unit">ROBOTICS WORKGROUP // NODE 01</span>
+        <span class="win-controls" aria-hidden="true"><i>_</i><i>□</i><i>×</i></span>
+      </header>
+      <div class="hero-body">
+        <div class="mission">
+          <div class="eyebrow">Alternative systems history // Chicago build node</div>
+          <h1>A robot operating system from a Windows 95 timeline that never ended.</h1>
+          <p><strong>TARS/95</strong> combines workmanlike desktop chrome, late-90s industrial anime instrumentation, and the dry restraint of a machine that has no patience for decorative nonsense.</p>
+          <div class="hazard" aria-hidden="true"></div>
+        </div>
+        <aside class="readout">
+          <h2>Current Repository</h2>
+          <div class="readout-row"><span><i class="lamp"></i>WORKTREE</span><span>CLEAN</span></div>
+          <div class="readout-row"><span>BRANCH</span><span>V3</span></div>
+          <div class="readout-row"><span>BASELINE</span><span>7593f8c</span></div>
+          <div class="readout-row"><span>SURFACES</span><span>PYGAME + WEB</span></div>
+          <div class="readout-row"><span><i class="lamp amber"></i>BUILD STATE</span><span>PLANNED</span></div>
+          <div class="readout-row"><span>NEXT ACTION</span><span>UI-001</span></div>
+        </aside>
+      </div>
+      <div class="stats">
+        <div class="stat"><b id="completeCount">0</b><span>actions complete</span></div>
+        <div class="stat"><b id="totalCount">34</b><span>small commits planned</span></div>
+        <div class="stat"><b>320×480</b><span>primary logical screen</span></div>
+        <div class="stat"><b>30 FPS</b><span>Pi render target</span></div>
+      </div>
+    </section>
+
+    <div class="grid-2">
+      <section class="window">
+        <header class="titlebar"><span>Repository Assessment.txt</span></header>
+        <div class="pane">
+          <div class="screen">
+            <h3>What is already here</h3>
+            <ul>
+              <li><strong>Robot display:</strong> pygame/OpenGL manager, terminal, apps, screensavers, camera overlays, touch routing.</li>
+              <li><strong>Remote dashboard:</strong> Flask/Jinja, Socket.IO, Bootstrap, five major tabs, responsive mobile navigation, theme CSS.</li>
+              <li><strong>Useful visual assets:</strong> VGA, pixel, retro, and mono fonts already live in the repository.</li>
+              <li><strong>Primary constraint:</strong> UI code is coupled to generated config and Pi-only audio, camera, network, servo, and OpenGL paths.</li>
+              <li><strong>Maintainability risk:</strong> the web UI is concentrated in a 3,885-line stylesheet and a 4,763-line script; device colors/fonts are repeated across modules.</li>
+            </ul>
+          </div>
+          <div class="callout"><strong>Scope rule:</strong> preserve robot behavior first. Visual work begins behind preview fixtures and shared theme primitives; hardware code is not invoked by desktop previews.</div>
+        </div>
+      </section>
+
+      <section class="window">
+        <header class="titlebar"><span>Local Preview Protocol.exe</span></header>
+        <div class="pane">
+          <div class="screen">
+            <h3>Fast review loop</h3>
+            <ol>
+              <li>Run a lightweight pygame preview at the exact robot canvas with simulated sensors and states.</li>
+              <li>Run a mock Flask server that uses production templates/static assets with deterministic API fixtures.</li>
+              <li>Capture four review frames: device 480×320, device 800×480, desktop web, mobile web.</li>
+              <li>Compare, review, then commit one work action only.</li>
+              <li>Use the Pi only at explicit integration gates, not as the everyday design workstation.</li>
+            </ol>
+          </div>
+          <div class="callout"><strong>Current host check:</strong> Python 3.13, Flask, and Jinja are present. pygame and PyOpenGL are not installed yet. The preview dependency set will be isolated and documented in UI-001.</div>
+        </div>
+      </section>
+    </div>
+
+    <section class="window" id="workboard">
+      <header class="titlebar"><span>Work Queue — One Row = One Reviewable Commit</span></header>
+      <nav class="toolbar" aria-label="Work queue filters">
+        <button class="active" data-filter="all">All</button>
+        <button data-filter="0">Preview</button>
+        <button data-filter="1">Foundation</button>
+        <button data-filter="2">Robot UI</button>
+        <button data-filter="3">Web UI</button>
+        <button data-filter="4">Hardening</button>
+        <span class="legend">PLANNED · NEXT · DONE · BLOCKED</span>
+      </nav>
+      <div class="board-wrap">
+        <table class="board">
+          <thead><tr><th>ID</th><th>Status</th><th>Short-session action + acceptance check</th><th>Target</th><th>Expected commit</th></tr></thead>
+          <tbody>
+            <tr class="phase-row" data-phase="0"><td colspan="5">Phase 0 — Make iteration cheap and safe</td></tr>
+            <tr data-phase="0" data-state="next"><td class="id">UI-001</td><td><span class="status">Next</span></td><td class="task"><b>Add isolated preview dependencies and setup command</b><small>A fresh Windows environment can install only what visual preview needs; no robot install script required.</small></td><td>Tooling</td><td class="commit">chore(ui): add desktop preview dependencies</td></tr>
+            <tr data-phase="0" data-state="planned"><td class="id">UI-002</td><td><span class="status">Planned</span></td><td class="task"><b>Add hardware-safe pygame preview runner</b><small>Launches real 2D app classes at 480×320 and 800×480 with ESC-to-exit and zero GPIO/camera/audio access.</small></td><td>Device</td><td class="commit">feat(ui): add desktop device preview</td></tr>
+            <tr data-phase="0" data-state="planned"><td class="id">UI-003</td><td><span class="status">Planned</span></td><td class="task"><b>Add mock web dashboard server</b><small>Production templates and assets load locally with deterministic safe fixtures and no robot runtime imports.</small></td><td>Web</td><td class="commit">feat(webui): add mock preview server</td></tr>
+            <tr data-phase="0" data-state="planned"><td class="id">UI-004</td><td><span class="status">Planned</span></td><td class="task"><b>Add preview state controls</b><small>Reviewer can switch standby/listening/thinking/talking, battery, alerts, and connectivity without code edits.</small></td><td>Both</td><td class="commit">feat(ui): add preview state controls</td></tr>
+            <tr data-phase="0" data-state="planned"><td class="id">UI-005</td><td><span class="status">Planned</span></td><td class="task"><b>Capture baseline review frames</b><small>Known-size screenshots exist for both device sizes and desktop/mobile web before the redesign starts.</small></td><td>Review</td><td class="commit">test(ui): capture baseline review frames</td></tr>
+            <tr data-phase="0" data-state="planned"><td class="id">UI-006</td><td><span class="status">Planned</span></td><td class="task"><b>Add preview smoke tests</b><small>Imports, fixtures, main routes, and representative app renders fail fast in CI/local checks.</small></td><td>Tests</td><td class="commit">test(ui): add preview smoke coverage</td></tr>
+
+            <tr class="phase-row" data-phase="1"><td colspan="5">Phase 1 — Establish the TARS/95 visual language</td></tr>
+            <tr data-phase="1" data-state="planned"><td class="id">UI-007</td><td><span class="status">Planned</span></td><td class="task"><b>Record the visual contract</b><small>Palette, typography, bevel rules, spacing, animation limits, state colors, and naming are explicit and original.</small></td><td>Design</td><td class="commit">docs(ui): define the TARS95 visual contract</td></tr>
+            <tr data-phase="1" data-state="planned"><td class="id">UI-008</td><td><span class="status">Planned</span></td><td class="task"><b>Add offline web theme tokens</b><small>A new selectable TARS/95 theme loads without Google Fonts or CDN dependencies.</small></td><td>Web</td><td class="commit">feat(webui): add TARS95 theme tokens</td></tr>
+            <tr data-phase="1" data-state="planned"><td class="id">UI-009</td><td><span class="status">Planned</span></td><td class="task"><b>Add pygame drawing primitives</b><small>Windows, title bars, recessed panels, buttons, lamps, labels, and hazard marks render from one module.</small></td><td>Device</td><td class="commit">feat(ui): add TARS95 drawing primitives</td></tr>
+            <tr data-phase="1" data-state="planned"><td class="id">UI-010</td><td><span class="status">Planned</span></td><td class="task"><b>Add an original pixel icon set</b><small>Core actions remain readable at robot resolution and do not copy Windows or anime production marks.</small></td><td>Both</td><td class="commit">feat(ui): add TARS95 pixel icons</td></tr>
+            <tr data-phase="1" data-state="planned"><td class="id">UI-011</td><td><span class="status">Planned</span></td><td class="task"><b>Map machine states to UI behavior</b><small>Booting, standby, listening, thinking, talking, warning, fault, and offline have consistent copy/color/motion.</small></td><td>Both</td><td class="commit">feat(ui): define machine state presentation</td></tr>
+            <tr data-phase="1" data-state="planned"><td class="id">UI-012</td><td><span class="status">Planned</span></td><td class="task"><b>Create the first visual proof</b><small>One static shell composition demonstrates the full direction at 480×320 before deeper implementation.</small></td><td>Review</td><td class="commit">feat(ui): add TARS95 shell proof</td></tr>
+
+            <tr class="phase-row" data-phase="2"><td colspan="5">Phase 2 — Build the robot-facing operating system</td></tr>
+            <tr data-phase="2" data-state="planned"><td class="id">UI-013</td><td><span class="status">Planned</span></td><td class="task"><b>Build the boot/self-test sequence</b><small>Short deterministic startup shows subsystem checks and hands off cleanly to the shell.</small></td><td>Device</td><td class="commit">feat(ui): add TARS95 boot sequence</td></tr>
+            <tr data-phase="2" data-state="planned"><td class="id">UI-014</td><td><span class="status">Planned</span></td><td class="task"><b>Build desktop shell, taskbar, and launcher</b><small>Touch targets work at both device sizes; active app and machine state stay visible.</small></td><td>Device</td><td class="commit">feat(ui): add TARS95 device shell</td></tr>
+            <tr data-phase="2" data-state="planned"><td class="id">UI-015</td><td><span class="status">Planned</span></td><td class="task"><b>Restyle the command console</b><small>User/TARS/system messages, scroll, status, and activity affordances remain legible at 320 px logical width.</small></td><td>Device</td><td class="commit">feat(ui): restyle command console</td></tr>
+            <tr data-phase="2" data-state="planned"><td class="id">UI-016</td><td><span class="status">Planned</span></td><td class="task"><b>Frame eyes and avatar as OS applications</b><small>Expressive visuals retain full area while title/status chrome makes them part of the same system.</small></td><td>Device</td><td class="commit">feat(ui): integrate character display windows</td></tr>
+            <tr data-phase="2" data-state="planned"><td class="id">UI-017</td><td><span class="status">Planned</span></td><td class="task"><b>Rebuild systems monitor</b><small>Battery, CPU, network, audio, and memory are scannable; unavailable sensors read N/A, never fake healthy.</small></td><td>Device</td><td class="commit">feat(ui): rebuild systems monitor</td></tr>
+            <tr data-phase="2" data-state="planned"><td class="id">UI-018</td><td><span class="status">Planned</span></td><td class="task"><b>Rebuild locomotion controls</b><small>Direction, stop, neutral, and servo-disable actions are distinct and require deliberate input.</small></td><td>Device</td><td class="commit">feat(ui): rebuild locomotion controls</td></tr>
+            <tr data-phase="2" data-state="planned"><td class="id">UI-019</td><td><span class="status">Planned</span></td><td class="task"><b>Restyle audio/comms diagnostics</b><small>Wake, speech, TTS, noise, and barge-in signals share the new state language without losing detail.</small></td><td>Device</td><td class="commit">feat(ui): restyle audio diagnostics</td></tr>
+            <tr data-phase="2" data-state="planned"><td class="id">UI-020</td><td><span class="status">Planned</span></td><td class="task"><b>Add TARS/95 idle and fault screens</b><small>Idle feels alive at low cost; warnings and faults override decoration with clear next actions.</small></td><td>Device</td><td class="commit">feat(ui): add idle and fault screens</td></tr>
+
+            <tr class="phase-row" data-phase="3"><td colspan="5">Phase 3 — Bring the remote web console into the same timeline</td></tr>
+            <tr data-phase="3" data-state="planned"><td class="id">UI-021</td><td><span class="status">Planned</span></td><td class="task"><b>Replace web shell and navigation chrome</b><small>Desktop and mobile navigation preserve every route/tab and clearly show connection status.</small></td><td>Web</td><td class="commit">feat(webui): add TARS95 console shell</td></tr>
+            <tr data-phase="3" data-state="planned"><td class="id">UI-022</td><td><span class="status">Planned</span></td><td class="task"><b>Restyle chat and voice controls</b><small>Streaming, speaker labels, uploads, mic states, errors, and generated media remain functional.</small></td><td>Web</td><td class="commit">feat(webui): restyle chat console</td></tr>
+            <tr data-phase="3" data-state="planned"><td class="id">UI-023</td><td><span class="status">Planned</span></td><td class="task"><b>Restyle motion workspace</b><small>Joystick, sequences, arms, legs, emergency actions, and 3D preview remain understandable.</small></td><td>Web</td><td class="commit">feat(webui): restyle motion workspace</td></tr>
+            <tr data-phase="3" data-state="planned"><td class="id">UI-024</td><td><span class="status">Planned</span></td><td class="task"><b>Restyle character/emotion workspace</b><small>Emotion choices, character editing, sprite feedback, and save states fit the visual system.</small></td><td>Web</td><td class="commit">feat(webui): restyle character workspace</td></tr>
+            <tr data-phase="3" data-state="planned"><td class="id">UI-025</td><td><span class="status">Planned</span></td><td class="task"><b>Restyle telemetry and memory dashboard</b><small>Stats, charts, graphs, logs, detail drawers, and editing keep strong hierarchy at dense information levels.</small></td><td>Web</td><td class="commit">feat(webui): restyle telemetry dashboard</td></tr>
+            <tr data-phase="3" data-state="planned"><td class="id">UI-026</td><td><span class="status">Planned</span></td><td class="task"><b>Restyle configuration workspace</b><small>Groups, descriptions, validation, skill controls, Wi-Fi, tunnel, restart, and save feedback remain safe.</small></td><td>Web</td><td class="commit">feat(webui): restyle configuration workspace</td></tr>
+            <tr data-phase="3" data-state="planned"><td class="id">UI-027</td><td><span class="status">Planned</span></td><td class="task"><b>Restyle login and holo display</b><small>Entry and dedicated avatar views work offline, at touch sizes, and under rotation/dimming options.</small></td><td>Web</td><td class="commit">feat(webui): restyle login and holo views</td></tr>
+            <tr data-phase="3" data-state="planned"><td class="id">UI-028</td><td><span class="status">Planned</span></td><td class="task"><b>Polish responsive console layouts</b><small>Phone portrait, phone landscape, tablet, and desktop have no clipped controls or hidden critical actions.</small></td><td>Web</td><td class="commit">fix(webui): polish responsive console layouts</td></tr>
+
+            <tr class="phase-row" data-phase="4"><td colspan="5">Phase 4 — Prove it survives real robot duty</td></tr>
+            <tr data-phase="4" data-state="planned"><td class="id">UI-029</td><td><span class="status">Planned</span></td><td class="task"><b>Audit keyboard, touch, contrast, and motion</b><small>Focus is visible, targets are usable, information is not color-only, and reduced-motion is honored.</small></td><td>Both</td><td class="commit">fix(ui): harden interaction accessibility</td></tr>
+            <tr data-phase="4" data-state="planned"><td class="id">UI-030</td><td><span class="status">Planned</span></td><td class="task"><b>Remove preview/production network dependencies</b><small>Core UI, fonts, icons, and scripts render with the robot disconnected from the internet.</small></td><td>Both</td><td class="commit">fix(ui): make core interface offline safe</td></tr>
+            <tr data-phase="4" data-state="planned"><td class="id">UI-031</td><td><span class="status">Planned</span></td><td class="task"><b>Lock visual regression review set</b><small>All four canonical viewports plus key machine states have approved reference captures.</small></td><td>Tests</td><td class="commit">test(ui): lock TARS95 review captures</td></tr>
+            <tr data-phase="4" data-state="planned"><td class="id">UI-032</td><td><span class="status">Planned</span></td><td class="task"><b>Add Pi staging and hardware safety checklist</b><small>First Pi boot defaults to no movement; config backup, rollback, and emergency stop are explicit.</small></td><td>Pi</td><td class="commit">docs(ui): add Pi staging checklist</td></tr>
+            <tr data-phase="4" data-state="planned"><td class="id">UI-033</td><td><span class="status">Planned</span></td><td class="task"><b>Run first Pi display validation</b><small>Both target resolutions, rotation, touch, startup, 30 FPS budget, temperature, and memory are recorded.</small></td><td>Pi</td><td class="commit">test(ui): record first Pi display validation</td></tr>
+            <tr data-phase="4" data-state="planned"><td class="id">UI-034</td><td><span class="status">Planned</span></td><td class="task"><b>Close the release checklist</b><small>Setup, preview, review, Pi deployment, rollback, and remaining limitations are documented and current.</small></td><td>Release</td><td class="commit">docs(ui): complete TARS95 release guide</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="grid-2">
+      <section class="window">
+        <header class="titlebar"><span>Commit Discipline.ini</span></header>
+        <div class="pane">
+          <div class="screen">
+            <h3>Rules for every action</h3>
+            <ul>
+              <li>One workboard row per commit; no opportunistic bundles.</li>
+              <li>Before/after capture for visual changes.</li>
+              <li>State the exact acceptance check in the commit/turn handoff.</li>
+              <li>Do not mix behavior changes with a visual restyle unless the row explicitly requires it.</li>
+              <li>Never exercise servos, shutdown, Wi-Fi mutation, or tunnel actions from preview fixtures.</li>
+              <li>Stop for review at the end of each row or tightly related two-row session.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="window">
+        <header class="titlebar"><span>Review Ledger.log</span></header>
+        <div class="pane">
+          <div class="ledger" aria-label="Review ledger">
+            <div class="head">Action</div><div class="head">Commit / review evidence</div><div class="head">Decision</div>
+            <div>PLAN-000</div><div>This dashboard; repository baseline 7593f8c.</div><div>READY</div>
+            <div>UI-001</div><div>Pending</div><div>—</div>
+            <div>UI-002</div><div>Pending</div><div>—</div>
+          </div>
+          <div class="callout">Update the status row and ledger in the same commit as the work it records. The dashboard is the project record, not a second implementation stream.</div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="taskbar">
+    <span class="start">▣ TARS/95</span>
+    <span class="task-button">TARS95_BUILD_DASHBOARD.html</span>
+    <span class="clock" id="clock">BUILD: PLANNED</span>
+  </footer>
+
+  <script>
+    const rows = [...document.querySelectorAll('tr[data-state]')];
+    const done = rows.filter((row) => row.dataset.state === 'done').length;
+    document.getElementById('completeCount').textContent = done;
+    document.getElementById('totalCount').textContent = rows.length;
+
+    document.querySelectorAll('[data-filter]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const filter = button.dataset.filter;
+        document.querySelectorAll('[data-filter]').forEach((item) => item.classList.remove('active'));
+        button.classList.add('active');
+        document.querySelectorAll('tbody tr[data-phase]').forEach((row) => {
+          row.hidden = filter !== 'all' && row.dataset.phase !== filter;
+        });
+      });
+    });
+  </script>
+</body>
+</html>
