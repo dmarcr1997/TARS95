@@ -1,0 +1,15 @@
+# Desktop UI preview only.
+#
+# Keep this deliberately smaller than the Raspberry Pi runtime: the preview
+# tools must never need GPIO, camera, servo, microphone, or model packages.
+
+# Production web templates and their local mock transport.
+Flask>=3.0,<4
+Flask-SocketIO>=5.3,<6
+
+# Production pygame surfaces and image/data helpers.
+numpy>=2.1,<3
+Pillow>=10,<13
+pygame>=2.6,<3
+PyOpenGL>=3.1,<4
+qrcode[pil]>=8,<9

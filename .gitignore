@@ -112,6 +112,7 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.venv-ui-preview/
 env/
 venv/
 ENV/
