@@ -41,7 +41,7 @@ else {
     Write-Host "Using the existing preview environment."
 }
 
-$importCheck = "import flask, flask_socketio, numpy, PIL, pygame, OpenGL, qrcode"
+$importCheck = "import flask, flask_socketio, numpy, PIL, pygame, OpenGL, qrcode, playwright"
 & $previewPython -c $importCheck *> $null
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Preview dependencies are already installed." -ForegroundColor Green

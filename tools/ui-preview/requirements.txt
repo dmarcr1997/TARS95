@@ -13,3 +13,6 @@ Pillow>=10,<13
 pygame>=2.6,<3
 PyOpenGL>=3.1,<4
 qrcode[pil]>=8,<9
+
+# Repeatable desktop/mobile browser captures using installed Chrome or Edge.
+playwright>=1.50,<2
