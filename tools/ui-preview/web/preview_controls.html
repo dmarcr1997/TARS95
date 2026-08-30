@@ -1,0 +1,60 @@
+<link rel="stylesheet" href="/preview-assets/preview_controls.css">
+<aside class="preview-console" id="previewConsole" aria-label="Desktop preview controls">
+  <button class="preview-console__toggle" id="previewToggle" type="button" aria-expanded="true" aria-controls="previewConsoleBody">PREVIEW CTRL</button>
+  <div class="preview-console__body" id="previewConsoleBody">
+    <header class="preview-console__header">
+      <span class="preview-console__lamp" aria-hidden="true"></span>
+      <span>FIXTURE CONTROL</span>
+      <small>LOCALHOST // NO I/O</small>
+    </header>
+
+    <fieldset class="preview-fieldset">
+      <legend>MACHINE STATE</legend>
+      <div class="preview-segments" id="previewMachineStates">
+        <button type="button" data-preview-field="machine_state" data-preview-value="standby">Standby</button>
+        <button type="button" data-preview-field="machine_state" data-preview-value="listening">Listening</button>
+        <button type="button" data-preview-field="machine_state" data-preview-value="thinking">Thinking</button>
+        <button type="button" data-preview-field="machine_state" data-preview-value="talking">Talking</button>
+      </div>
+    </fieldset>
+
+    <fieldset class="preview-fieldset">
+      <legend>BATTERY</legend>
+      <div class="preview-battery-row">
+        <input id="previewBattery" type="range" min="0" max="100" step="5" value="95" aria-label="Preview battery percentage">
+        <output id="previewBatteryValue" for="previewBattery">095%</output>
+      </div>
+    </fieldset>
+
+    <div class="preview-select-grid">
+      <label>ALERT
+        <select id="previewAlert">
+          <option value="none">None</option>
+          <option value="advisory">Advisory</option>
+          <option value="warning">Warning</option>
+          <option value="fault">Fault</option>
+        </select>
+      </label>
+      <label>LINK
+        <select id="previewConnectivity">
+          <option value="online">Online</option>
+          <option value="degraded">Degraded</option>
+          <option value="offline">Offline</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="preview-console__footer">
+      <span id="previewSaveStatus">FIXTURES READY</span>
+      <button type="button" id="previewReset">RESET</button>
+    </div>
+  </div>
+</aside>
+
+<div class="preview-readout" id="previewReadout" aria-live="polite">
+  <span id="previewReadoutState">STANDBY</span>
+  <span id="previewReadoutBattery">BAT 095%</span>
+  <span id="previewReadoutAlert">NO ALERT</span>
+  <span id="previewReadoutLink">LINK ONLINE</span>
+</div>
+<script src="/preview-assets/preview_controls.js"></script>

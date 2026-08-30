@@ -17,10 +17,13 @@ import qrcode
 from flask import Flask, Response, jsonify, redirect, render_template, request, send_from_directory, url_for
 from flask_socketio import SocketIO, emit
 
+from preview_state import PreviewStateStore
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WWW_ROOT = REPO_ROOT / "src" / "www"
 CHARACTER_ROOT = REPO_ROOT / "src" / "character"
+PREVIEW_WEB_ROOT = Path(__file__).resolve().parent / "web"
 HOST = "127.0.0.1"
 DEFAULT_PORT = 5095
 BOOT_ID = "tars95-desktop-preview"
@@ -141,10 +144,11 @@ def create_app(theme: str = "default", port: int = DEFAULT_PORT) -> tuple[Flask,
         JSON_SORT_KEYS=False,
     )
     socketio = SocketIO(app, async_mode="threading", logger=False, engineio_logger=False)
+    preview_state = PreviewStateStore()
 
     @app.get("/")
     def index() -> str:
-        return render_template(
+        page = render_template(
             "index.html",
             char_name="TARS95",
             char_greeting="DESKTOP PREVIEW ONLINE",
@@ -153,6 +157,24 @@ def create_app(theme: str = "default", port: int = DEFAULT_PORT) -> tuple[Flask,
             user_name="Operator",
             webui_theme=app.config["PREVIEW_THEME"],
         )
+        controls = (PREVIEW_WEB_ROOT / "preview_controls.html").read_text(encoding="utf-8")
+        return page.replace("</body>", f"{controls}\n</body>")
+
+    @app.get("/preview-assets/<path:filename>")
+    def preview_assets(filename: str) -> Response:
+        return send_from_directory(PREVIEW_WEB_ROOT, filename)
+
+    @app.route("/api/preview/state", methods=["GET", "POST"])
+    def preview_state_api() -> tuple[Response, int] | Response:
+        if request.method == "POST":
+            try:
+                state = preview_state.update(**(request.get_json(silent=True) or {}))
+            except (TypeError, ValueError) as exc:
+                return jsonify(success=False, error=str(exc)), 400
+            payload = preview_state.as_dict()
+            socketio.emit("preview_state", payload)
+            socketio.emit("talking_state", {"talking": state.machine_state == "talking", "preview": True})
+        return jsonify(success=True, state=preview_state.as_dict(), preview=True)
 
     @app.route("/login", methods=["GET", "POST"])
     def login() -> Response | str:
@@ -210,7 +232,16 @@ def create_app(theme: str = "default", port: int = DEFAULT_PORT) -> tuple[Flask,
 
     @app.get("/api/wifi/status")
     def wifi_status() -> Response:
-        return jsonify(mode="client", ssid="TARS95_DESKTOP", ip=HOST, preview=True)
+        connectivity = preview_state.snapshot().connectivity
+        if connectivity == "offline":
+            return jsonify(mode="disconnected", ssid=None, ip=None, preview=True)
+        return jsonify(
+            mode="client",
+            ssid="TARS95_DESKTOP" if connectivity == "online" else "TARS95_WEAK_LINK",
+            ip=HOST,
+            signal=100 if connectivity == "online" else 32,
+            preview=True,
+        )
 
     @app.get("/api/wifi/networks")
     def wifi_networks() -> Response:
@@ -232,15 +263,18 @@ def create_app(theme: str = "default", port: int = DEFAULT_PORT) -> tuple[Flask,
 
     @app.get("/api/system/metrics")
     def system_metrics() -> Response:
+        state = preview_state.snapshot()
         return jsonify(
             cpu_load=19.95,
             ram_usage=42.0,
             ram_total_mb=640,
             cpu_temp=35.0,
             uptime_secs=1995,
-            emotion="pragmatism",
-            battery=95,
+            emotion=state.machine_state,
+            battery=state.battery,
             character="TARS95",
+            alert=state.alert,
+            connectivity=state.connectivity,
             preview=True,
         )
 
@@ -417,7 +451,9 @@ def create_app(theme: str = "default", port: int = DEFAULT_PORT) -> tuple[Flask,
 
     @socketio.on("connect")
     def socket_connect() -> None:
-        emit("talking_state", {"talking": False, "preview": True})
+        state = preview_state.snapshot()
+        emit("talking_state", {"talking": state.machine_state == "talking", "preview": True})
+        emit("preview_state", preview_state.as_dict())
 
     @socketio.on("client_debug")
     def client_debug(_payload: Any = None) -> None:
@@ -443,6 +479,7 @@ def run_checks(app: Flask, socketio: SocketIO) -> None:
         "/get_skills", "/get_movements", "/get_arms_status", "/get_saved_sequences",
         "/api/dashboard/stats", "/api/dashboard/graph", "/api/dashboard/mood",
         "/api/dashboard/interactions", "/api/dashboard/topics", "/api/dashboard/prompt",
+        "/api/preview/state", "/preview-assets/preview_controls.css", "/preview-assets/preview_controls.js",
     ]
     for route in get_routes:
         response = client.get(route)
@@ -450,7 +487,10 @@ def run_checks(app: Flask, socketio: SocketIO) -> None:
             raise RuntimeError(f"GET {route} returned {response.status_code}")
 
     page = client.get("/").get_data(as_text=True)
-    for marker in ("id=\"chat-tab\"", "id=\"motion-tab\"", "id=\"dashboard-tab\"", "/static/js/main.js"):
+    for marker in (
+        "id=\"chat-tab\"", "id=\"motion-tab\"", "id=\"dashboard-tab\"",
+        "/static/js/main.js", "id=\"previewConsole\"",
+    ):
         if marker not in page:
             raise RuntimeError(f"Rendered index is missing {marker}")
 
@@ -461,6 +501,18 @@ def run_checks(app: Flask, socketio: SocketIO) -> None:
     movement_data = client.get("/get_movements").get_json()
     if not movement_data["legs_only"] or not movement_data["has_arms"] or not movement_data["movements"]:
         raise RuntimeError("Movement fixture groups are empty")
+
+    state_response = client.post("/api/preview/state", json={
+        "machine_state": "talking", "battery": 15, "alert": "warning", "connectivity": "offline",
+    })
+    if state_response.status_code != 200:
+        raise RuntimeError("Preview state update was rejected")
+    metrics = client.get("/api/system/metrics").get_json()
+    wifi = client.get("/api/wifi/status").get_json()
+    if metrics["battery"] != 15 or metrics["alert"] != "warning" or wifi["mode"] != "disconnected":
+        raise RuntimeError("Preview state did not reach production-shaped fixtures")
+    if client.post("/api/preview/state", json={"battery": 101}).status_code != 400:
+        raise RuntimeError("Invalid preview state was accepted")
 
     socket_client = socketio.test_client(app)
     if not socket_client.is_connected():
@@ -479,7 +531,10 @@ def run_checks(app: Flask, socketio: SocketIO) -> None:
     if robot_modules:
         raise RuntimeError(f"Robot runtime modules were imported: {robot_modules}")
 
-    print(f"PASS: {len(get_routes)} routes, write no-op, Socket.IO, and robot-import lockout")
+    print(
+        f"PASS: {len(get_routes)} routes, state controls, deterministic chat, "
+        "write no-op, Socket.IO, and robot-import lockout"
+    )
 
 
 def available_themes() -> list[str]:

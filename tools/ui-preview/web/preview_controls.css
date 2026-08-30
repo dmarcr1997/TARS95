@@ -1,0 +1,134 @@
+:root {
+  --preview-ink: #081012;
+  --preview-panel: #151d1f;
+  --preview-line: #526164;
+  --preview-cyan: #16d9c4;
+  --preview-amber: #ffb000;
+  --preview-red: #f04436;
+  --preview-paper: #d7ded9;
+}
+
+.preview-console,
+.preview-readout {
+  font-family: "Share Tech Mono", "Courier New", monospace;
+  letter-spacing: .04em;
+}
+
+.preview-console {
+  position: fixed;
+  z-index: 10020;
+  top: 64px;
+  right: 12px;
+  width: 286px;
+  color: var(--preview-paper);
+  background: var(--preview-panel);
+  border: 1px solid #69777a;
+  box-shadow: 0 0 0 3px #090d0e, 8px 10px 24px rgba(0, 0, 0, .55);
+}
+
+.preview-console__toggle {
+  position: absolute;
+  top: 0;
+  right: 100%;
+  width: 34px;
+  min-height: 128px;
+  padding: 8px 6px;
+  color: var(--preview-ink);
+  background: var(--preview-amber);
+  border: 0;
+  font: 700 10px/1 "Courier New", monospace;
+  letter-spacing: .12em;
+  writing-mode: vertical-rl;
+  cursor: pointer;
+}
+
+.preview-console.is-collapsed {
+  transform: translateX(calc(100% + 12px));
+}
+
+.preview-console,
+.preview-console__toggle {
+  transition: transform 140ms steps(3, end);
+}
+
+.preview-console__body { padding: 0 12px 12px; }
+
+.preview-console__header {
+  margin: 0 -12px 12px;
+  padding: 9px 10px;
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+  gap: 7px;
+  color: #fff;
+  background: #031c55;
+  border-bottom: 2px solid #738286;
+  font-size: 12px;
+}
+
+.preview-console__header small { color: #9fb4b7; font-size: 8px; }
+.preview-console__lamp { width: 7px; height: 7px; background: var(--preview-cyan); box-shadow: 0 0 8px var(--preview-cyan); }
+
+.preview-fieldset { margin: 0 0 12px; padding: 7px; border: 1px solid var(--preview-line); }
+.preview-fieldset legend { padding: 0 5px; color: var(--preview-amber); font-size: 10px; }
+.preview-segments { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.preview-segments button,
+.preview-console__footer button {
+  min-height: 28px;
+  color: #dce9e5;
+  background: #253034;
+  border: 1px solid #667477;
+  border-bottom-color: #06090a;
+  border-right-color: #06090a;
+  font: 10px "Courier New", monospace;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.preview-segments button.is-active { color: var(--preview-ink); background: var(--preview-cyan); box-shadow: 0 0 10px rgba(22, 217, 196, .35); }
+
+.preview-battery-row { display: grid; grid-template-columns: 1fr 54px; gap: 8px; align-items: center; }
+.preview-battery-row input { accent-color: var(--preview-cyan); }
+.preview-battery-row output { color: #fff; text-align: right; font-size: 14px; }
+
+.preview-select-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.preview-select-grid label { color: var(--preview-amber); font-size: 9px; }
+.preview-select-grid select {
+  width: 100%;
+  margin-top: 4px;
+  padding: 5px;
+  color: #e7f4ef;
+  background: #071013;
+  border: 1px solid var(--preview-line);
+  font: 10px "Courier New", monospace;
+}
+
+.preview-console__footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #91a6a8; font-size: 9px; }
+.preview-console__footer button { min-height: 24px; padding: 3px 10px; }
+
+.preview-readout {
+  position: fixed;
+  z-index: 10010;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 1px;
+  color: #dce9e5;
+  background: #020607;
+  border: 1px solid #536164;
+  box-shadow: 4px 5px 0 rgba(0, 0, 0, .45);
+  font-size: 9px;
+}
+.preview-readout span { padding: 6px 8px; border-right: 1px solid #394548; }
+.preview-readout span:first-child { color: var(--preview-ink); background: var(--preview-cyan); font-weight: 700; }
+.preview-readout.is-warning #previewReadoutAlert { color: #111; background: var(--preview-amber); }
+.preview-readout.is-fault #previewReadoutAlert { color: #fff; background: var(--preview-red); }
+.preview-readout.is-offline #previewReadoutLink { color: #fff; background: #596063; }
+
+@media (max-width: 700px) {
+  .preview-console { top: 56px; right: 7px; width: min(270px, calc(100vw - 48px)); }
+  .preview-readout { right: 7px; bottom: 72px; max-width: calc(100vw - 14px); flex-wrap: wrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preview-console, .preview-console__toggle { transition: none; }
+}
