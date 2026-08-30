@@ -483,10 +483,15 @@ def run_checks(app: Flask, socketio: SocketIO) -> None:
     ]
     for route in get_routes:
         response = client.get(route)
-        if response.status_code != 200:
-            raise RuntimeError(f"GET {route} returned {response.status_code}")
+        try:
+            if response.status_code != 200:
+                raise RuntimeError(f"GET {route} returned {response.status_code}")
+        finally:
+            response.close()
 
-    page = client.get("/").get_data(as_text=True)
+    page_response = client.get("/")
+    page = page_response.get_data(as_text=True)
+    page_response.close()
     for marker in (
         "id=\"chat-tab\"", "id=\"motion-tab\"", "id=\"dashboard-tab\"",
         "/static/js/main.js", "id=\"previewConsole\"",
@@ -495,23 +500,37 @@ def run_checks(app: Flask, socketio: SocketIO) -> None:
             raise RuntimeError(f"Rendered index is missing {marker}")
 
     response = client.post("/robot_move", json={"movement": "wave"})
-    if response.status_code != 200 or response.get_json().get("hardware_access") is not False:
+    robot_status = response.status_code
+    robot_data = response.get_json()
+    response.close()
+    if robot_status != 200 or robot_data.get("hardware_access") is not False:
         raise RuntimeError("Robot no-op contract failed")
 
-    movement_data = client.get("/get_movements").get_json()
+    movement_response = client.get("/get_movements")
+    movement_data = movement_response.get_json()
+    movement_response.close()
     if not movement_data["legs_only"] or not movement_data["has_arms"] or not movement_data["movements"]:
         raise RuntimeError("Movement fixture groups are empty")
 
     state_response = client.post("/api/preview/state", json={
         "machine_state": "talking", "battery": 15, "alert": "warning", "connectivity": "offline",
     })
-    if state_response.status_code != 200:
+    state_status = state_response.status_code
+    state_response.close()
+    if state_status != 200:
         raise RuntimeError("Preview state update was rejected")
-    metrics = client.get("/api/system/metrics").get_json()
-    wifi = client.get("/api/wifi/status").get_json()
+    metrics_response = client.get("/api/system/metrics")
+    metrics = metrics_response.get_json()
+    metrics_response.close()
+    wifi_response = client.get("/api/wifi/status")
+    wifi = wifi_response.get_json()
+    wifi_response.close()
     if metrics["battery"] != 15 or metrics["alert"] != "warning" or wifi["mode"] != "disconnected":
         raise RuntimeError("Preview state did not reach production-shaped fixtures")
-    if client.post("/api/preview/state", json={"battery": 101}).status_code != 400:
+    invalid_response = client.post("/api/preview/state", json={"battery": 101})
+    invalid_status = invalid_response.status_code
+    invalid_response.close()
+    if invalid_status != 400:
         raise RuntimeError("Invalid preview state was accepted")
 
     socket_client = socketio.test_client(app)
@@ -519,12 +538,14 @@ def run_checks(app: Flask, socketio: SocketIO) -> None:
         raise RuntimeError("Socket.IO preview connection failed")
     socket_events = socket_client.get_received()
     chat_response = client.post("/process_llm", data={"message": "status"})
+    chat_status = chat_response.status_code
+    chat_response.close()
     socketio.sleep(1.2)
     chat_events = socket_client.get_received()
     socket_client.disconnect()
     if not any(event["name"] == "talking_state" for event in socket_events):
         raise RuntimeError("Socket.IO preview fixture was not emitted")
-    if chat_response.status_code != 200 or not any(event["name"] == "bot_message" for event in chat_events):
+    if chat_status != 200 or not any(event["name"] == "bot_message" for event in chat_events):
         raise RuntimeError("Deterministic chat fixture was not emitted")
 
     robot_modules = [name for name in sys.modules if name == "modules" or name.startswith("modules.")]

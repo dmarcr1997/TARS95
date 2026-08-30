@@ -336,8 +336,8 @@
           <div class="readout-row"><span>BRANCH</span><span>V3</span></div>
           <div class="readout-row"><span>BASELINE</span><span>7593f8c</span></div>
           <div class="readout-row"><span>SURFACES</span><span>PYGAME + WEB</span></div>
-          <div class="readout-row"><span><i class="lamp amber"></i>BUILD STATE</span><span>IN PROGRESS</span></div>
-          <div class="readout-row"><span>NEXT ACTION</span><span>UI-006</span></div>
+          <div class="readout-row"><span><i class="lamp amber"></i>BUILD STATE</span><span>PREVIEW READY</span></div>
+          <div class="readout-row"><span>NEXT ACTION</span><span>UI-007</span></div>
         </aside>
       </div>
       <div class="stats">
@@ -382,6 +382,7 @@
           <div class="callout"><strong>Device preview:</strong> <code>.\.venv-ui-preview\Scripts\python.exe .\tools\ui-preview\device_preview.py --app eyes --size 480x320</code>. Use <code>--size 800x480</code> for the larger display; ESC quits, LEFT/RIGHT switches apps, and S/B/A/C cycles state fixtures. Mouse controls live beside the exact robot framebuffer.</div>
           <div class="callout"><strong>Web preview:</strong> <code>.\.venv-ui-preview\Scripts\python.exe .\tools\ui-preview\web_preview.py</code>, then open <code>http://127.0.0.1:5095</code>. It is localhost-only, deterministic, and all robot write routes are no-ops. Run <code>--check</code> for a fast contract test.</div>
           <div class="callout"><strong>Baseline set:</strong> <a href="review-baselines/UI-005/README.md">UI-005 review frames</a> records both robot sizes plus desktop and phone web viewports. Rebuild all four with <code>.\.venv-ui-preview\Scripts\python.exe .\tools\ui-preview\capture_baselines.py</code>.</div>
+          <div class="callout"><strong>Full preview test:</strong> <code>.\tools\ui-preview\test.ps1</code> checks dependencies, fixtures, 23 web routes, Socket.IO, robot write no-ops, all five device apps at both sizes, real Chrome desktop/mobile renders, and baseline integrity.</div>
         </div>
       </section>
     </div>
@@ -407,10 +408,10 @@
             <tr data-phase="0" data-state="done"><td class="id">UI-003</td><td><span class="status">Done</span></td><td class="task"><b>Add mock web dashboard server</b><small>Production templates and assets load locally with deterministic safe fixtures and no robot runtime imports.</small></td><td>Web</td><td class="commit">feat(webui): add mock preview server</td></tr>
             <tr data-phase="0" data-state="done"><td class="id">UI-004</td><td><span class="status">Done</span></td><td class="task"><b>Add preview state controls</b><small>Reviewer can switch standby/listening/thinking/talking, battery, alerts, and connectivity without code edits.</small></td><td>Both</td><td class="commit">feat(ui): add preview state controls</td></tr>
             <tr data-phase="0" data-state="done"><td class="id">UI-005</td><td><span class="status">Done</span></td><td class="task"><b>Capture baseline review frames</b><small>Known-size screenshots exist for both device sizes and desktop/mobile web before the redesign starts.</small></td><td>Review</td><td class="commit">test(ui): capture baseline review frames</td></tr>
-            <tr data-phase="0" data-state="next"><td class="id">UI-006</td><td><span class="status">Next</span></td><td class="task"><b>Add preview smoke tests</b><small>Imports, fixtures, main routes, and representative app renders fail fast in CI/local checks.</small></td><td>Tests</td><td class="commit">test(ui): add preview smoke coverage</td></tr>
+            <tr data-phase="0" data-state="done"><td class="id">UI-006</td><td><span class="status">Done</span></td><td class="task"><b>Add preview smoke tests</b><small>Imports, fixtures, main routes, and representative app renders fail fast in CI/local checks.</small></td><td>Tests</td><td class="commit">test(ui): add preview smoke coverage</td></tr>
 
             <tr class="phase-row" data-phase="1"><td colspan="5">Phase 1 — Establish the TARS/95 visual language</td></tr>
-            <tr data-phase="1" data-state="planned"><td class="id">UI-007</td><td><span class="status">Planned</span></td><td class="task"><b>Record the visual contract</b><small>Palette, typography, bevel rules, spacing, animation limits, state colors, and naming are explicit and original.</small></td><td>Design</td><td class="commit">docs(ui): define the TARS95 visual contract</td></tr>
+            <tr data-phase="1" data-state="next"><td class="id">UI-007</td><td><span class="status">Next</span></td><td class="task"><b>Record the visual contract</b><small>Palette, typography, bevel rules, spacing, animation limits, state colors, and naming are explicit and original.</small></td><td>Design</td><td class="commit">docs(ui): define the TARS95 visual contract</td></tr>
             <tr data-phase="1" data-state="planned"><td class="id">UI-008</td><td><span class="status">Planned</span></td><td class="task"><b>Add offline web theme tokens</b><small>A new selectable TARS/95 theme loads without Google Fonts or CDN dependencies.</small></td><td>Web</td><td class="commit">feat(webui): add TARS95 theme tokens</td></tr>
             <tr data-phase="1" data-state="planned"><td class="id">UI-009</td><td><span class="status">Planned</span></td><td class="task"><b>Add pygame drawing primitives</b><small>Windows, title bars, recessed panels, buttons, lamps, labels, and hazard marks render from one module.</small></td><td>Device</td><td class="commit">feat(ui): add TARS95 drawing primitives</td></tr>
             <tr data-phase="1" data-state="planned"><td class="id">UI-010</td><td><span class="status">Planned</span></td><td class="task"><b>Add an original pixel icon set</b><small>Core actions remain readable at robot resolution and do not copy Windows or anime production marks.</small></td><td>Both</td><td class="commit">feat(ui): add TARS95 pixel icons</td></tr>
@@ -478,6 +479,7 @@
             <div>UI-003</div><div>Production Jinja/static UI passed 20-route, Socket.IO, write no-op, and robot-import checks; chat, motion, dashboard, and config verified in a real browser.</div><div>READY</div>
             <div>UI-004</div><div>Mouse/keyboard device rail and collapsible web rail switch four machine states, battery, alerts, and connectivity; fixtures propagate into telemetry, Wi-Fi, avatar, and Socket.IO with zero hardware attempts.</div><div>READY</div>
             <div>UI-005</div><div>Four exact-size PNGs captured and inspected: device 480×320, device 800×480, web 1440×900, and phone 390×844; manifest records source revision and SHA-256 hashes.</div><div>READY</div>
+            <div>UI-006</div><div>Eleven warning-free smoke tests cover environment imports, state validation, 23 web routes, Socket.IO, hardware no-ops, ten device app/size renders, two real browser viewports, and four baseline hashes.</div><div>READY</div>
           </div>
           <div class="callout">Update the status row and ledger in the same commit as the work it records. The dashboard is the project record, not a second implementation stream.</div>
         </div>
