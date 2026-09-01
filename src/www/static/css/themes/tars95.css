@@ -22,6 +22,7 @@
   --t95-signal-amber: #ffb000;
   --t95-fault-red: #f04436;
   --t95-offline-gray: #6f777a;
+  --t95-panel-line: #304044;
 
   /* Machine-state tokens */
   --state-booting: #2f77d0;
@@ -116,22 +117,15 @@ body {
   display: none !important;
 }
 
-/* Adapt current panels to the contract's square, two-pixel bevel grammar. */
+/* Dark instrument panels are flat. Manila shell chrome carries the retro cue. */
 .glass,
 .glass-deep {
   background: var(--panel-solid) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  border: 2px solid !important;
-  border-color:
-    var(--t95-chrome-highlight)
-    var(--t95-chrome-shadow)
-    var(--t95-chrome-shadow)
-    var(--t95-chrome-highlight) !important;
+  border: 1px solid var(--t95-panel-line) !important;
   border-radius: 0 !important;
-  box-shadow:
-    inset 1px 1px 0 var(--t95-chrome-mid),
-    inset -1px -1px 0 #000 !important;
+  box-shadow: none !important;
 }
 
 .glass::before,
@@ -144,7 +138,7 @@ body {
   border-bottom: 2px solid var(--t95-chrome-shadow) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  box-shadow: inset 0 1px 0 var(--t95-chrome-highlight) !important;
+  box-shadow: none !important;
 }
 
 .custom-tab {
@@ -160,7 +154,8 @@ body {
 
 .custom-tab.active {
   background: var(--t95-title-navy) !important;
-  box-shadow: inset 0 -3px 0 var(--t95-signal-amber) !important;
+  border-bottom: 3px solid var(--t95-signal-amber) !important;
+  box-shadow: none !important;
 }
 
 .custom-tab.active i {
@@ -169,6 +164,76 @@ body {
   -webkit-text-fill-color: currentColor !important;
   filter: none !important;
   animation: none !important;
+}
+
+/* Strip the inherited cyberpunk glow and inset bevel language. */
+body *,
+body *::before,
+body *::after {
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* Conversation and entry areas use rules, not glowing containers. */
+.msg-bubble {
+  background: transparent !important;
+  border-radius: 0 !important;
+}
+
+.msg-bubble-bot {
+  border: 0 !important;
+  border-left: 2px solid var(--t95-chrome-mid) !important;
+}
+
+.msg-bubble-user {
+  border: 0 !important;
+  border-right: 2px solid var(--t95-chrome-face) !important;
+}
+
+.input-pill {
+  background: transparent !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--t95-panel-line) !important;
+  border-radius: 0 !important;
+}
+
+.input-pill:focus-within {
+  border-bottom-color: var(--t95-signal-amber) !important;
+}
+
+.chat-input-bar > button {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+
+.hud-btn,
+.hud-input,
+.hud-select,
+.camera-toggle-btn,
+.dpad-housing,
+.dpad-btn,
+.speed-pill span,
+.body-panel,
+.servo-card,
+.config-icon-tile-inner,
+.config-panel,
+.field-wrapper,
+.config-input,
+.config-tag-input-container,
+.screensaver-option,
+.wf-card,
+.wf-net-btn,
+.wf-overlay-card,
+.reboot-card,
+.em-btn,
+.toast-msg,
+.nexus-status-strip,
+.nexus-panel-console,
+.dash-stat,
+.chared-input,
+.chared-textarea {
+  border-radius: 0 !important;
 }
 
 :focus-visible {

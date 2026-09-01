@@ -109,6 +109,7 @@ class WebContractTests(unittest.TestCase):
         for token in (
             "--t95-canvas-black: #050708",
             "--t95-chrome-face: #d8c99b",
+            "--t95-panel-line: #304044",
             "--t95-phosphor-cyan: #16d9c4",
             "--state-fault: var(--t95-fault-red)",
             "--font-mono: \"Lucida Console\"",
@@ -261,6 +262,30 @@ class BrowserRenderTests(unittest.TestCase):
         self.assertEqual("rgb(216, 201, 155)", page.locator(".tab-bar").evaluate(
             "element => getComputedStyle(element).backgroundColor"
         ))
+        self.assertEqual("none", page.locator(".tab-bar").evaluate(
+            "element => getComputedStyle(element).boxShadow"
+        ))
+        self.assertEqual("none", page.locator(".input-pill").evaluate(
+            "element => getComputedStyle(element).boxShadow"
+        ))
+        input_rule_width = float(page.locator(".input-pill").evaluate(
+            "element => getComputedStyle(element).borderBottomWidth"
+        ).removesuffix("px"))
+        self.assertGreater(input_rule_width, 0)
+        self.assertLessEqual(input_rule_width, 1)
+        decorative_shadows = page.locator("body *").evaluate_all("""
+            elements => elements
+                .filter(element => {
+                    const style = getComputedStyle(element);
+                    return style.boxShadow !== 'none' || style.textShadow !== 'none';
+                })
+                .map(element => ({
+                    element: element.tagName.toLowerCase() + (element.id ? '#' + element.id : ''),
+                    boxShadow: getComputedStyle(element).boxShadow,
+                    textShadow: getComputedStyle(element).textShadow,
+                }))
+        """)
+        self.assertEqual([], decorative_shadows)
         self.assertEqual(5, page.locator(".custom-tab[data-bs-toggle='tab']").count())
         self.assertTrue(page.locator("#previewConsole").is_visible())
         if mobile:

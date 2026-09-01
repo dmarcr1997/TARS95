@@ -108,7 +108,7 @@ Use all caps for state names, subsystem labels, and compact commands. Use senten
 
 - Use a 4 px base grid.
 - Use 8 px outer margins and 4 or 8 px internal gaps.
-- Use 1 px rules and 2 px bevels. Do not stack more than three visible border layers.
+- Use 1 px rules. Reserve 2 px bevels for manila shell chrome and deliberate physical controls; dark instrument panels stay flat and never receive neon bevels. Do not stack more than three visible border layers.
 - Standard physical title bar height is 22 px.
 - Standard physical status strip height is 18 px.
 - Standard physical taskbar/launcher rail height is 28 px.
