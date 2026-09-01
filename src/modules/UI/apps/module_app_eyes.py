@@ -15,6 +15,7 @@ from modules.module_eyes import RoboEyes, Mood
 from modules.UI.module_ui_tars95 import (
     CANVAS_BLACK,
     CAUTION_AMBER,
+    CHROME_FACE,
     OFFLINE_GRAY,
     PANEL_LINE,
     PHOSPHOR_CYAN,
@@ -227,6 +228,7 @@ class EyesApp:
         draw_status_bar(
             frame,
             (
+                ("MENU", "APPS", CHROME_FACE),
                 ("MIC", mic_value, PHOSPHOR_CYAN if mic_value == "LIVE" else OFFLINE_GRAY),
                 ("VIS", "N/A", OFFLINE_GRAY),
                 ("LINK", self._connectivity, link_color),

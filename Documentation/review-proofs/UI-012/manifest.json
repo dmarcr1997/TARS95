@@ -1,0 +1,16 @@
+{
+  "action": "UI-012",
+  "file": "TARS95_shell_proof_480x320.png",
+  "dimensions": [
+    480,
+    320
+  ],
+  "surface": "eyes",
+  "fixture": {
+    "machine_state": "listening",
+    "battery": 78,
+    "alert": "none",
+    "connectivity": "online"
+  },
+  "sha256": "11559826e0099be2ba4f3f3645e6f46ef602b80cb27519469aed1b7bd5a7094e"
+}

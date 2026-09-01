@@ -22,6 +22,7 @@ from werkzeug.serving import make_server
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PREVIEW_ROOT = REPO_ROOT / "tools" / "ui-preview"
 BASELINE_ROOT = REPO_ROOT / "Documentation" / "review-baselines" / "UI-005"
+PROOF_ROOT = REPO_ROOT / "Documentation" / "review-proofs" / "UI-012"
 sys.path.insert(0, str(PREVIEW_ROOT))
 
 from capture_baselines import QuietRequestHandler, launch_installed_browser  # noqa: E402
@@ -414,6 +415,17 @@ class BrowserRenderTests(unittest.TestCase):
 
 
 class BaselineIntegrityTests(unittest.TestCase):
+    def test_ui012_shell_proof_dimensions_and_hash(self) -> None:
+        manifest = json.loads((PROOF_ROOT / "manifest.json").read_text(encoding="utf-8"))
+        proof_path = PROOF_ROOT / manifest["file"]
+        self.assertEqual("UI-012", manifest["action"])
+        self.assertEqual([480, 320], manifest["dimensions"])
+        with Image.open(proof_path) as image:
+            self.assertEqual((480, 320), image.size)
+        self.assertEqual(
+            manifest["sha256"], hashlib.sha256(proof_path.read_bytes()).hexdigest(),
+        )
+
     def test_manifest_files_dimensions_and_hashes(self) -> None:
         manifest = json.loads((BASELINE_ROOT / "manifest.json").read_text(encoding="utf-8"))
         self.assertEqual("UI-005", manifest["baseline"])

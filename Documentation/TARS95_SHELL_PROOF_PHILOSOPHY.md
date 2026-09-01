@@ -1,0 +1,11 @@
+# Paper Circuit Industrialism
+
+**Paper Circuit Industrialism** treats TARS/95 as a machine built by technicians who never stopped trusting the clarity of a beige workstation, then carried that language into a practical robot. Warm manila is structural material rather than nostalgia pasted on top: it frames the operating surface like a service manual cover, while navy labels and square controls keep every action literal. Craftsmanship appears in alignment, one-pixel rules, and the deliberate refusal to decorate areas that should stay quiet.
+
+The composition is an Eyes-first instrument. Two large cyan apertures hold the center without a portrait frame, allowing the robot’s presence to feel immediate while the surrounding grid establishes scale and calibration. The expression is original and abstract—not a character quotation—and its simplicity makes subtle future gaze and blink behavior meaningful. The artistry comes from restraint: the living element gets room, while every machine label accepts a supporting role.
+
+Information sits at the perimeter in the way a durable field terminal protects its primary work area. The top strip identifies the system, current application, and resolved machine state; the lower rail provides one obvious path to `MENU / APPS` and reports microphone, vision, link, and battery truth. Signal colors are never ambient decoration. Cyan means a real open microphone here, while unavailable vision remains gray and the healthy link and battery read green.
+
+The industrial-anime influence lives in density, maintenance marks, optical-array language, and the sensation that the screen belongs inside a larger machine. The Windows-era influence lives in the manila header, hard separators, compact bitmap rhythm, and plain operational naming. Neither influence is copied literally. Careful craftsmanship fuses them into a plausible alternate product history with its own iconography, spacing, and hierarchy.
+
+Motion follows the same philosophy: mechanical state changes step, sensor activity follows real input or output, and faults never strobe. Eyes alone may blink or shift organically because those motions communicate presence. At exact 480×320 size, every letter, lamp, and separator must earn its pixels; this proof is the visual gate for the production boot flow and shell that follow.
