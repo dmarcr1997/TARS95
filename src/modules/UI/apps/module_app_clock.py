@@ -93,6 +93,7 @@ class ClockApp:
             self.screen, "TARS/95", "CHRONOMETER // LOCAL", self._machine_state,
             height=title_height,
             state_color=alert_color(self._alert, machine_color),
+            icon="clock",
         )
 
         battery = "N/A" if self._battery is None else f"{int(self._battery):03d}%"

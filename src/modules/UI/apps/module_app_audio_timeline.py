@@ -445,6 +445,7 @@ class AudioTimelineApp:
             self.screen, "TARS/95", "AUDIO // SIGNAL", self._machine_state,
             height=self._title_h,
             state_color=alert_color(self._alert, machine_color),
+            icon="audio",
         )
 
         battery = "N/A" if self._battery is None else f"{int(self._battery):03d}%"

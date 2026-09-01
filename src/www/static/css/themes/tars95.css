@@ -166,6 +166,30 @@ body {
   animation: none !important;
 }
 
+/* Original hard-edged navigation glyphs; Bootstrap remains the fallback for
+   every other theme. The SVGs are local and share the pygame 16-unit grammar. */
+.t95-icon::before {
+  content: "" !important;
+  display: block !important;
+  width: 24px;
+  height: 24px;
+  background-color: currentColor;
+  -webkit-mask: var(--t95-icon-source) center / contain no-repeat;
+  mask: var(--t95-icon-source) center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.t95-icon-chat { --t95-icon-source: url("../../icons/tars95/chat.svg"); }
+.t95-icon-motion { --t95-icon-source: url("../../icons/tars95/motion.svg"); }
+.t95-icon-avatar { --t95-icon-source: url("../../icons/tars95/avatar.svg"); }
+.t95-icon-systems { --t95-icon-source: url("../../icons/tars95/systems.svg"); }
+.t95-icon-settings { --t95-icon-source: url("../../icons/tars95/settings.svg"); }
+
+.mobile-nav-btn .t95-icon::before {
+  width: 16px;
+  height: 16px;
+}
+
 /* Strip the inherited cyberpunk glow and inset bevel language. */
 body *,
 body *::before,

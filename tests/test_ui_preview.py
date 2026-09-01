@@ -113,9 +113,16 @@ class WebContractTests(unittest.TestCase):
             "--t95-phosphor-cyan: #16d9c4",
             "--state-fault: var(--t95-fault-red)",
             "--font-mono: \"Lucida Console\"",
+            ".t95-icon-chat { --t95-icon-source:",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, theme_css)
+        for icon_name in ("chat", "motion", "avatar", "systems", "settings"):
+            with self.subTest(icon=icon_name):
+                icon_response = themed_client.get(f"/static/icons/tars95/{icon_name}.svg")
+                self.assertEqual(200, icon_response.status_code)
+                self.assertIn(b"shape-rendering=\"crispEdges\"", icon_response.data)
+                icon_response.close()
 
     def test_all_robot_writes_are_no_ops(self) -> None:
         routes = (
@@ -164,6 +171,29 @@ class WebContractTests(unittest.TestCase):
 
 
 class DeviceRenderTests(unittest.TestCase):
+    def test_original_pixel_icons_render_cleanly_at_contract_sizes(self) -> None:
+        code = """
+import sys
+sys.path.insert(0, r'{src}')
+import pygame
+pygame.init()
+from modules.UI.module_ui_icons import ICON_NAMES, render_icon
+assert len(ICON_NAMES) == 10
+for size in (16, 24):
+    for name in ICON_NAMES:
+        surface = render_icon(name, size, (22, 217, 196))
+        assert surface.get_size() == (size, size)
+        colors = {{tuple(pixel) for column in pygame.surfarray.array3d(surface) for pixel in column}}
+        assert colors <= {{(0, 0, 0), (22, 217, 196)}}
+        assert (22, 217, 196) in colors
+pygame.quit()
+""".format(src=str(REPO_ROOT / "src"))
+        result = subprocess.run(
+            [sys.executable, "-c", code], cwd=REPO_ROOT,
+            capture_output=True, text=True, timeout=20,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
     def test_preview_state_reaches_fixture_aware_device_apps(self) -> None:
         class FixtureAwareApp:
             snapshot = None
@@ -325,6 +355,11 @@ class BrowserRenderTests(unittest.TestCase):
         """)
         self.assertEqual([], decorative_shadows)
         self.assertEqual(5, page.locator(".custom-tab[data-bs-toggle='tab']").count())
+        self.assertEqual(5, page.locator(".custom-tab[data-bs-toggle='tab'] .t95-icon").count())
+        icon_size = page.locator("#chat-tab .t95-icon").evaluate(
+            "element => getComputedStyle(element, '::before').width"
+        )
+        self.assertAlmostEqual(24.0, float(icon_size.removesuffix("px")), delta=0.1)
         self.assertTrue(page.locator("#previewConsole").is_visible())
         if mobile:
             self.assertTrue(page.locator("#mobileNav").is_visible())

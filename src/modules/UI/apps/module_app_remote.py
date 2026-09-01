@@ -298,6 +298,7 @@ class RemoteApp:
             self.screen, "TARS/95", "REMOTE // SERVICE", app_state,
             height=self._title_h,
             state_color=alert_color(self._alert, state_color),
+            icon="remote",
         )
 
         battery = "N/A" if self._battery is None else f"{int(self._battery):03d}%"

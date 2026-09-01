@@ -8,6 +8,8 @@ from typing import Sequence
 
 import pygame
 
+from modules.UI.module_ui_icons import draw_icon
+
 
 # The same compact palette used by the TARS/95 web theme.
 CANVAS_BLACK = (5, 7, 8)
@@ -168,6 +170,7 @@ def draw_title_bar(
     *,
     height: int,
     state_color: tuple[int, int, int] | None = None,
+    icon: str | None = None,
 ) -> pygame.Rect:
     """Draw warm manila structural chrome with a flat machine-state readout."""
     rect = pygame.Rect(0, 0, surface.get_width(), height)
@@ -185,8 +188,17 @@ def draw_title_bar(
     )
     divider_x = title_rect.right + scaled(8, scale)
     draw_rule(surface, (divider_x, scaled(5, scale)), (divider_x, height - scaled(5, scale)), CHROME_MID)
+    section_x = divider_x + scaled(8, scale)
+    if icon:
+        icon_size = scaled(16, scale)
+        draw_icon(
+            surface, icon,
+            pygame.Rect(section_x, (height - icon_size) // 2, icon_size, icon_size),
+            NAVY,
+        )
+        section_x += icon_size + scaled(6, scale)
     draw_label(
-        surface, section, (divider_x + scaled(8, scale), max(1, (height - meta_size) // 2)),
+        surface, section, (section_x, max(1, (height - meta_size) // 2)),
         size=meta_size, color=CHROME_SHADOW,
     )
 

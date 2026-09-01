@@ -188,6 +188,7 @@ class EyesApp:
             self._machine_state,
             height=title_height,
             state_color=alert_color(self._alert, machine_color),
+            icon="eyes",
         )
 
         index_y = title_height + scaled(10, scale)
