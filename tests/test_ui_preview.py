@@ -32,7 +32,7 @@ from preview_state import (  # noqa: E402
     MACHINE_STATES,
     PreviewStateStore,
 )
-from web_preview import HOST, create_app, run_checks  # noqa: E402
+from web_preview import HOST, available_themes, create_app, run_checks  # noqa: E402
 
 
 class EnvironmentTests(unittest.TestCase):
@@ -89,6 +89,32 @@ class WebContractTests(unittest.TestCase):
 
     def test_complete_contract_check(self) -> None:
         run_checks(self.app, self.socketio)
+
+    def test_tars95_theme_is_selectable_and_offline(self) -> None:
+        themed_app, _socketio = create_app(theme="tars95")
+        themed_client = themed_app.test_client()
+        for route in ("/", "/login"):
+            with self.subTest(route=route):
+                response = themed_client.get(route)
+                page = response.get_data(as_text=True)
+                response.close()
+                self.assertEqual(200, response.status_code)
+                self.assertIn("css/themes/tars95.css", page)
+                self.assertNotIn("https://", page)
+        self.assertIn("tars95", available_themes())
+        theme_response = themed_client.get("/static/css/themes/tars95.css")
+        self.assertEqual(200, theme_response.status_code)
+        theme_css = theme_response.get_data(as_text=True)
+        theme_response.close()
+        for token in (
+            "--t95-canvas-black: #050708",
+            "--t95-chrome-face: #c7c7c7",
+            "--t95-phosphor-cyan: #16d9c4",
+            "--state-fault: var(--t95-fault-red)",
+            "--font-mono: \"Lucida Console\"",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, theme_css)
 
     def test_all_robot_writes_are_no_ops(self) -> None:
         routes = (
@@ -187,7 +213,7 @@ class DeviceRenderTests(unittest.TestCase):
 class BrowserRenderTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.app, _socketio = create_app(port=0)
+        cls.app, _socketio = create_app(theme="tars95", port=0)
         cls.server = make_server(HOST, 0, cls.app, threaded=True, request_handler=QuietRequestHandler)
         cls.port = cls.server.server_port
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
@@ -218,13 +244,20 @@ class BrowserRenderTests(unittest.TestCase):
         )
         page = context.new_page()
         errors: list[str] = []
+        external_requests: list[str] = []
         page.on("console", lambda message: errors.append(message.text) if message.type == "error" else None)
         page.on("pageerror", lambda error: errors.append(str(error)))
-        page.route("https://fonts.googleapis.com/**", lambda route: route.fulfill(status=200, content_type="text/css", body=""))
-        page.route("https://unpkg.com/**", lambda route: route.fulfill(status=200, content_type="application/javascript", body=""))
+        page.on("request", lambda request: external_requests.append(request.url) if (
+            request.url.startswith(("http://", "https://"))
+            and not request.url.startswith(f"http://{HOST}:{self.port}/")
+        ) else None)
         page.goto(f"http://{HOST}:{self.port}/", wait_until="domcontentloaded")
         page.locator("#chat").wait_for(state="visible")
         page.wait_for_timeout(500)
+        self.assertEqual("#16d9c4", page.evaluate(
+            "getComputedStyle(document.documentElement).getPropertyValue('--t95-phosphor-cyan').trim()"
+        ))
+        self.assertEqual("none", page.locator("#particleBg").evaluate("element => getComputedStyle(element).display"))
         self.assertEqual(5, page.locator(".custom-tab[data-bs-toggle='tab']").count())
         self.assertTrue(page.locator("#previewConsole").is_visible())
         if mobile:
@@ -240,6 +273,7 @@ class BrowserRenderTests(unittest.TestCase):
         page.screenshot(path=screenshot, animations="disabled", scale="css")
         context.close()
         self.assertEqual([], errors)
+        self.assertEqual([], external_requests)
         with Image.open(screenshot) as image:
             self.assertEqual((width, height), image.size)
 

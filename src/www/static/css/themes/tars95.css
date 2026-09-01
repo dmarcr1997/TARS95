@@ -1,0 +1,187 @@
+/* =====================================================
+   TARS/95 web theme
+   60% Windows 95 interaction grammar / 40% original
+   late-90s machine instrumentation.
+
+   This file is intentionally self-contained and offline.
+   Canonical values mirror Documentation/TARS95_VISUAL_CONTRACT.md.
+===================================================== */
+:root {
+  /* Canonical TARS/95 tokens */
+  --t95-canvas-black: #050708;
+  --t95-desktop-teal: #167c79;
+  --t95-chrome-face: #c7c7c7;
+  --t95-chrome-highlight: #ffffff;
+  --t95-chrome-mid: #858585;
+  --t95-chrome-shadow: #222222;
+  --t95-title-navy: #031c55;
+  --t95-screen-ink: #081116;
+  --t95-text-paper: #e8e3d1;
+  --t95-phosphor-cyan: #16d9c4;
+  --t95-phosphor-green: #38e878;
+  --t95-signal-amber: #ffb000;
+  --t95-fault-red: #f04436;
+  --t95-offline-gray: #6f777a;
+
+  /* Machine-state tokens */
+  --state-booting: #2f77d0;
+  --state-standby: #78909c;
+  --state-listening: var(--t95-phosphor-cyan);
+  --state-thinking: var(--t95-signal-amber);
+  --state-talking: var(--t95-phosphor-green);
+  --state-warning: var(--t95-signal-amber);
+  --state-fault: var(--t95-fault-red);
+  --state-offline: var(--t95-offline-gray);
+
+  /* Compatibility with the current web shell */
+  --accent-rgb: 22, 217, 196;
+  --panel-rgb: 8, 17, 22;
+  --magenta-rgb: 255, 176, 0;
+  --purple-rgb: 3, 28, 85;
+
+  --bg: var(--t95-canvas-black);
+  --bg2: var(--t95-screen-ink);
+  --panel: rgba(var(--panel-rgb), 0.96);
+  --panel-solid: rgba(var(--panel-rgb), 0.99);
+  --glass-blur: 0px;
+  --glass-border: var(--t95-chrome-mid);
+  --glass-shine: none;
+
+  --border: var(--t95-chrome-mid);
+  --border-hi: var(--t95-chrome-highlight);
+  --cyan: var(--t95-phosphor-cyan);
+  --cyan-dim: rgba(var(--accent-rgb), 0.62);
+  --cyan-glow: rgba(var(--accent-rgb), 0.08);
+  --magenta: var(--t95-signal-amber);
+  --magenta-dim: rgba(var(--magenta-rgb), 0.62);
+  --purple: var(--t95-title-navy);
+  --purple-dim: rgba(var(--purple-rgb), 0.72);
+  --gold: var(--t95-signal-amber);
+  --gold-dim: rgba(var(--magenta-rgb), 0.58);
+
+  --green: var(--t95-phosphor-green);
+  --orange: var(--t95-signal-amber);
+  --red: var(--t95-fault-red);
+  --text: var(--t95-text-paper);
+  --text-dim: #9aa4a5;
+
+  /* System-resident fallbacks keep this theme network-free. */
+  --font-mono: "Lucida Console", "Courier New", monospace;
+  --font-hud: "Arial Narrow", "Franklin Gothic Medium", Tahoma, sans-serif;
+  --font-body: Tahoma, Geneva, sans-serif;
+  --font-size-xs: 9px;
+  --font-size-sm: 11px;
+  --font-size-md: 13px;
+  --font-size-lg: 16px;
+
+  --tab-h: 52px;
+  --radius: 0px;
+  --radius-sm: 0px;
+  --radius-lg: 2px;
+  --ease: steps(2, end);
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  /* Static, low-cost background presentation */
+  --nebula-1: none;
+  --nebula-2: none;
+  --nebula-3: none;
+  --particle-rays: none;
+  --particle-orb-hues: 172, 40, 210;
+  --scanlines: repeating-linear-gradient(
+    0deg,
+    transparent 0,
+    transparent 3px,
+    rgba(22, 217, 196, 0.018) 3px,
+    rgba(22, 217, 196, 0.018) 4px
+  );
+  --scanline-opacity: 1;
+  --vignette: none;
+}
+
+body {
+  background-color: var(--t95-canvas-black) !important;
+  background-image:
+    linear-gradient(90deg, rgba(22, 217, 196, 0.025) 1px, transparent 1px),
+    linear-gradient(rgba(22, 217, 196, 0.025) 1px, transparent 1px) !important;
+  background-size: 32px 32px !important;
+}
+
+/* Decorative space effects conflict with the instrument-console direction. */
+.nebula-layer,
+#particleBg {
+  display: none !important;
+}
+
+/* Adapt current panels to the contract's square, two-pixel bevel grammar. */
+.glass,
+.glass-deep {
+  background: var(--panel-solid) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 2px solid !important;
+  border-color:
+    var(--t95-chrome-highlight)
+    var(--t95-chrome-shadow)
+    var(--t95-chrome-shadow)
+    var(--t95-chrome-highlight) !important;
+  border-radius: 0 !important;
+  box-shadow:
+    inset 1px 1px 0 var(--t95-chrome-mid),
+    inset -1px -1px 0 #000 !important;
+}
+
+.glass::before,
+.glass-deep::before {
+  display: none !important;
+}
+
+.tab-bar {
+  background: var(--t95-chrome-face) !important;
+  border-bottom: 2px solid var(--t95-chrome-shadow) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: inset 0 1px 0 var(--t95-chrome-highlight) !important;
+}
+
+.custom-tab {
+  transition-duration: 120ms !important;
+}
+
+.custom-tab i,
+.connection-indicator,
+.tars-watermark {
+  color: var(--t95-chrome-shadow) !important;
+  text-shadow: none !important;
+}
+
+.custom-tab.active {
+  background: var(--t95-title-navy) !important;
+  box-shadow: inset 0 -3px 0 var(--t95-signal-amber) !important;
+}
+
+.custom-tab.active i {
+  color: var(--t95-text-paper) !important;
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+  filter: none !important;
+  animation: none !important;
+}
+
+:focus-visible {
+  outline: 2px solid var(--t95-signal-amber) !important;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

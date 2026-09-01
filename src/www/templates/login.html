@@ -4,9 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>{{ char_name }} · Access Control</title>
+  {% set active_theme = webui_theme or 'default' %}
+  {% if active_theme != 'tars95' %}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
-  <link href="{{ url_for('static', filename='css/themes/' + (webui_theme or 'default') + '.css') }}?v=7.4" rel="stylesheet">
+  {% endif %}
+  <link href="{{ url_for('static', filename='css/themes/' + active_theme + '.css') }}?v=7.4" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}?v=7.4">
 </head>
 <body>
