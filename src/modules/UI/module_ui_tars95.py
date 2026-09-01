@@ -9,6 +9,7 @@ from typing import Sequence
 import pygame
 
 from modules.UI.module_ui_icons import draw_icon
+from modules.UI.module_ui_state import STATE_COLORS, STATE_LABELS
 
 
 # The same compact palette used by the TARS/95 web theme.
@@ -27,22 +28,6 @@ READY_GREEN = (56, 232, 120)
 CAUTION_AMBER = (255, 176, 0)
 FAULT_RED = (240, 68, 54)
 OFFLINE_GRAY = (111, 119, 122)
-
-STATE_COLORS = {
-    "BOOTING": CAUTION_AMBER,
-    "STANDBY": OFFLINE_GRAY,
-    "LISTENING": PHOSPHOR_CYAN,
-    "THINKING": CAUTION_AMBER,
-    "PROCESSING": CAUTION_AMBER,
-    "TALKING": READY_GREEN,
-    "WARNING": CAUTION_AMBER,
-    "FAULT": FAULT_RED,
-    "OFFLINE": OFFLINE_GRAY,
-}
-
-STATE_LABELS = {
-    "THINKING": "PROCESSING",
-}
 
 _FONT_ROOT = Path(__file__).resolve().parent
 

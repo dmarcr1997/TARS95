@@ -24,8 +24,6 @@ from modules.UI.module_ui_tars95 import (
     PHOSPHOR_CYAN,
     READY_GREEN,
     SCREEN_INK,
-    STATE_COLORS,
-    alert_color,
     draw_grid,
     draw_hazard_marks,
     draw_label,
@@ -35,6 +33,7 @@ from modules.UI.module_ui_tars95 import (
     load_font,
     scaled,
 )
+from modules.UI.module_ui_state import resolve_presentation
 
 # ── Colors ────────────────────────────────────────────────────────────────────
 BG = CANVAS_BLACK
@@ -440,11 +439,13 @@ class AudioTimelineApp:
         self._finish_frame()
 
     def _finish_frame(self):
-        machine_color = STATE_COLORS.get(self._machine_state, OFFLINE_GRAY)
+        presentation = resolve_presentation(
+            self._machine_state, self._alert, self._connectivity,
+        )
         draw_title_bar(
-            self.screen, "TARS/95", "AUDIO // SIGNAL", self._machine_state,
+            self.screen, "TARS/95", "AUDIO // SIGNAL", presentation.label,
             height=self._title_h,
-            state_color=alert_color(self._alert, machine_color),
+            state_color=presentation.color,
             icon="audio",
         )
 

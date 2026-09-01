@@ -19,8 +19,6 @@ from modules.UI.module_ui_tars95 import (
     PAPER_TEXT,
     PHOSPHOR_CYAN,
     READY_GREEN,
-    STATE_COLORS,
-    alert_color,
     draw_grid,
     draw_hazard_marks,
     draw_label,
@@ -29,6 +27,7 @@ from modules.UI.module_ui_tars95 import (
     scale_for,
     scaled,
 )
+from modules.UI.module_ui_state import resolve_presentation
 
 # ---------------------------------------------------------------------------
 # Module-level state — set by module_chatui to drive the animation
@@ -297,11 +296,13 @@ class AvatarApp:
             size=scaled(8, ui_scale), color=CAUTION_AMBER,
         )
 
-        machine_color = STATE_COLORS.get(self._machine_state, OFFLINE_GRAY)
+        presentation = resolve_presentation(
+            self._machine_state, self._alert, self._connectivity,
+        )
         draw_title_bar(
-            self.screen, "TARS/95", "IDENTITY // AVATAR", self._machine_state,
+            self.screen, "TARS/95", "IDENTITY // AVATAR", presentation.label,
             height=title_h,
-            state_color=alert_color(self._alert, machine_color),
+            state_color=presentation.color,
             icon="avatar",
         )
 

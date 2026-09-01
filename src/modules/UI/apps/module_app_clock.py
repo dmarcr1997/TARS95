@@ -33,8 +33,6 @@ from modules.UI.module_ui_tars95 import (
     PAPER_TEXT,
     PHOSPHOR_CYAN,
     READY_GREEN,
-    STATE_COLORS,
-    alert_color,
     draw_grid,
     draw_label,
     draw_rule,
@@ -44,6 +42,7 @@ from modules.UI.module_ui_tars95 import (
     scale_for,
     scaled,
 )
+from modules.UI.module_ui_state import resolve_presentation
 
 
 class ClockApp:
@@ -88,11 +87,13 @@ class ClockApp:
         self._draw_analog_clock(now, scale, content)
         self._draw_readout(now, scale, content)
 
-        machine_color = STATE_COLORS.get(self._machine_state, OFFLINE_GRAY)
+        presentation = resolve_presentation(
+            self._machine_state, self._alert, self._connectivity,
+        )
         draw_title_bar(
-            self.screen, "TARS/95", "CHRONOMETER // LOCAL", self._machine_state,
+            self.screen, "TARS/95", "CHRONOMETER // LOCAL", presentation.label,
             height=title_height,
-            state_color=alert_color(self._alert, machine_color),
+            state_color=presentation.color,
             icon="clock",
         )
 

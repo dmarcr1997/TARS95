@@ -11,6 +11,7 @@
     <fieldset class="preview-fieldset">
       <legend>MACHINE STATE</legend>
       <div class="preview-segments" id="previewMachineStates">
+        <button type="button" data-preview-field="machine_state" data-preview-value="booting">Booting</button>
         <button type="button" data-preview-field="machine_state" data-preview-value="standby">Standby</button>
         <button type="button" data-preview-field="machine_state" data-preview-value="listening">Listening</button>
         <button type="button" data-preview-field="machine_state" data-preview-value="thinking">Thinking</button>
@@ -52,7 +53,7 @@
 </aside>
 
 <div class="preview-readout" id="previewReadout" aria-live="polite">
-  <span id="previewReadoutState">STANDBY</span>
+  <span class="preview-state-cell"><i id="previewStateMark" aria-hidden="true"></i><b id="previewReadoutState">STANDBY</b></span>
   <span id="previewReadoutBattery">BAT 095%</span>
   <span id="previewReadoutAlert">NO ALERT</span>
   <span id="previewReadoutLink">LINK ONLINE</span>

@@ -22,14 +22,13 @@ from modules.UI.module_ui_tars95 import (
     PHOSPHOR_CYAN,
     READY_GREEN,
     SCREEN_INK,
-    STATE_COLORS,
-    alert_color,
     draw_grid,
     draw_status_bar,
     draw_title_bar,
     load_font,
     scaled,
 )
+from modules.UI.module_ui_state import resolve_presentation
 
 # ── App states ────────────────────────────────────────────────────────────────
 _S_CHECKING   = "checking"      # Checking WiFi status
@@ -275,29 +274,13 @@ class RemoteApp:
         elif self._state == _S_IDLE:
             self._render_idle(content_top)
 
-        state_labels = {
-            _S_CHECKING: "CHECKING",
-            _S_WIFI_LIST: "WIFI SELECT",
-            _S_WIFI_PASS: "PASSWORD",
-            _S_WIFI_CONN: "CONNECTING",
-            _S_TUNNEL_START: "TUNNEL START",
-            _S_HOTSPOT_START: "HOTSPOT START",
-            _S_HOTSPOT: "HOTSPOT LIVE",
-            _S_ACTIVE: "REMOTE LIVE",
-            _S_ERROR: "FAULT",
-            _S_IDLE: "IDLE",
-        }
-        app_state = state_labels.get(self._state, "N/A")
-        state_color = (
-            FAULT_RED if self._state == _S_ERROR
-            else READY_GREEN if self._state in {_S_HOTSPOT, _S_ACTIVE}
-            else CAUTION_AMBER if self._state in {_S_CHECKING, _S_WIFI_CONN, _S_TUNNEL_START, _S_HOTSPOT_START}
-            else OFFLINE_GRAY
+        presentation = resolve_presentation(
+            self._machine_state, self._alert, self._connectivity,
         )
         draw_title_bar(
-            self.screen, "TARS/95", "REMOTE // SERVICE", app_state,
+            self.screen, "TARS/95", "REMOTE // SERVICE", presentation.label,
             height=self._title_h,
-            state_color=alert_color(self._alert, state_color),
+            state_color=presentation.color,
             icon="remote",
         )
 
@@ -320,7 +303,7 @@ class RemoteApp:
             (
                 ("WIFI", self._connectivity, link_color),
                 ("TUN", tunnel_value, READY_GREEN if tunnel_value == "LIVE" else OFFLINE_GRAY),
-                ("SYS", self._machine_state, STATE_COLORS.get(self._machine_state, OFFLINE_GRAY)),
+                ("SYS", presentation.label, presentation.color),
                 ("BAT", battery, battery_color),
             ),
             height=self._status_h,

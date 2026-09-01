@@ -19,8 +19,6 @@ from modules.UI.module_ui_tars95 import (
     PANEL_LINE,
     PHOSPHOR_CYAN,
     READY_GREEN,
-    STATE_COLORS,
-    alert_color,
     draw_grid,
     draw_hazard_marks,
     draw_label,
@@ -30,6 +28,7 @@ from modules.UI.module_ui_tars95 import (
     scale_for,
     scaled,
 )
+from modules.UI.module_ui_state import resolve_presentation
 
 _mood_request = None
 
@@ -180,14 +179,16 @@ class EyesApp:
         # Eyes are the content, not decoration: keep the central field open.
         self.eyes.draw(frame)
 
-        machine_color = STATE_COLORS.get(self._machine_state, OFFLINE_GRAY)
+        presentation = resolve_presentation(
+            self._machine_state, self._alert, self._connectivity,
+        )
         draw_title_bar(
             frame,
             "TARS/95",
             "EYES // HOME",
-            self._machine_state,
+            presentation.label,
             height=title_height,
-            state_color=alert_color(self._alert, machine_color),
+            state_color=presentation.color,
             icon="eyes",
         )
 

@@ -7,7 +7,7 @@ from threading import RLock
 from typing import Any, Iterable
 
 
-MACHINE_STATES = ("standby", "listening", "thinking", "talking")
+MACHINE_STATES = ("booting", "standby", "listening", "thinking", "talking")
 ALERT_LEVELS = ("none", "advisory", "warning", "fault")
 CONNECTIVITY_STATES = ("online", "degraded", "offline")
 

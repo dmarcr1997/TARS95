@@ -171,6 +171,37 @@ class WebContractTests(unittest.TestCase):
 
 
 class DeviceRenderTests(unittest.TestCase):
+    def test_machine_state_presentation_contract_and_priority(self) -> None:
+        code = """
+import sys
+sys.path.insert(0, r'{src}')
+from modules.UI.module_ui_state import STATE_PRESENTATIONS, resolve_presentation
+
+expected = {{
+    'BOOTING': ('BOOTING', (47, 119, 208), 'stepped-progress'),
+    'STANDBY': ('STANDBY', (120, 144, 156), 'ambient-only'),
+    'LISTENING': ('LISTENING', (22, 217, 196), 'input-driven'),
+    'THINKING': ('PROCESSING', (255, 176, 0), 'stepped-scan'),
+    'TALKING': ('TALKING', (56, 232, 120), 'output-driven'),
+    'WARNING': ('WARNING', (255, 176, 0), 'slow-pulse'),
+    'FAULT': ('FAULT', (240, 68, 54), 'acknowledgement-only'),
+    'OFFLINE': ('OFFLINE', (111, 119, 122), 'none'),
+}}
+assert set(STATE_PRESENTATIONS) == set(expected)
+for key, values in expected.items():
+    presentation = STATE_PRESENTATIONS[key]
+    assert (presentation.label, presentation.color, presentation.motion) == values
+assert resolve_presentation('talking', 'fault', 'offline').key == 'FAULT'
+assert resolve_presentation('talking', 'warning', 'offline').key == 'WARNING'
+assert resolve_presentation('talking', 'none', 'offline').key == 'OFFLINE'
+assert resolve_presentation('thinking').label == 'PROCESSING'
+""".format(src=str(REPO_ROOT / "src"))
+        result = subprocess.run(
+            [sys.executable, "-c", code], cwd=REPO_ROOT,
+            capture_output=True, text=True, timeout=20,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
     def test_original_pixel_icons_render_cleanly_at_contract_sizes(self) -> None:
         code = """
 import sys
@@ -364,11 +395,14 @@ class BrowserRenderTests(unittest.TestCase):
         if mobile:
             self.assertTrue(page.locator("#mobileNav").is_visible())
         else:
+            page.locator("[data-preview-value='thinking']").click()
+            page.wait_for_function("document.body.dataset.previewState === 'thinking'")
+            self.assertEqual("PROCESSING", page.locator("#previewReadoutState").inner_text())
             page.locator("[data-preview-value='talking']").click()
             page.locator("#previewAlert").select_option("warning")
             page.locator("#previewConnectivity").select_option("offline")
-            page.wait_for_timeout(250)
-            self.assertEqual("TALKING", page.locator("#previewReadoutState").inner_text())
+            page.wait_for_function("document.body.dataset.previewState === 'warning'")
+            self.assertEqual("WARNING", page.locator("#previewReadoutState").inner_text())
             self.assertEqual("WARNING", page.locator("#previewReadoutAlert").inner_text())
             self.assertIn("disconnected", page.locator("#connDot").get_attribute("class"))
         page.screenshot(path=screenshot, animations="disabled", scale="css")
