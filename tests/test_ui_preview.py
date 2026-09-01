@@ -25,7 +25,7 @@ BASELINE_ROOT = REPO_ROOT / "Documentation" / "review-baselines" / "UI-005"
 sys.path.insert(0, str(PREVIEW_ROOT))
 
 from capture_baselines import QuietRequestHandler, launch_installed_browser  # noqa: E402
-from device_preview import APP_SPECS, PHYSICAL_SIZES  # noqa: E402
+from device_preview import APP_SPECS, PHYSICAL_SIZES, apply_state_to_app  # noqa: E402
 from preview_state import (  # noqa: E402
     ALERT_LEVELS,
     CONNECTIVITY_STATES,
@@ -164,6 +164,41 @@ class WebContractTests(unittest.TestCase):
 
 
 class DeviceRenderTests(unittest.TestCase):
+    def test_preview_state_reaches_fixture_aware_device_apps(self) -> None:
+        class FixtureAwareApp:
+            snapshot = None
+
+            def set_preview_state(self, snapshot) -> None:
+                self.snapshot = snapshot
+
+        store = PreviewStateStore()
+        store.update(
+            machine_state="listening", battery=40,
+            alert="warning", connectivity="degraded",
+        )
+        app = FixtureAwareApp()
+        apply_state_to_app("eyes", app, store)
+        self.assertEqual(
+            ("listening", 40, "warning", "degraded"),
+            (
+                app.snapshot.machine_state, app.snapshot.battery,
+                app.snapshot.alert, app.snapshot.connectivity,
+            ),
+        )
+
+    def test_eyes_render_as_horizontal_tars95_instrument_at_480x320(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="tars95-eyes-style-") as temp_dir:
+            directory = Path(temp_dir)
+            self._render_case("eyes", "480x320", "listening", directory)
+            with Image.open(directory / "eyes-480x320.png").convert("RGB") as image:
+                self.assertEqual((216, 201, 155), image.getpixel((240, 10)))
+                for position in ((190, 160), (290, 160)):
+                    with self.subTest(position=position):
+                        red, green, blue = image.getpixel(position)
+                        self.assertLess(red, 80)
+                        self.assertGreater(green, 150)
+                        self.assertGreater(blue, 140)
+
     def test_all_apps_render_at_both_physical_sizes_without_hardware(self) -> None:
         cases = [
             (app_name, size, MACHINE_STATES[index % len(MACHINE_STATES)])

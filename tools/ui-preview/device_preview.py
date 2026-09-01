@@ -256,11 +256,14 @@ class PreviewControlPanel:
         return y + height + (6 if self.compact else 14)
 
 
-def apply_state_to_app(app_name: str, preview_state: PreviewStateStore) -> None:
+def apply_state_to_app(app_name: str, app, preview_state: PreviewStateStore) -> None:
+    module_name, _class_name = APP_SPECS[app_name]
+    app_module = sys.modules.get(module_name)
+    if hasattr(app, "set_preview_state"):
+        app.set_preview_state(preview_state.snapshot())
     if app_name == "avatar":
-        avatar_module = sys.modules.get(APP_SPECS["avatar"][0])
-        if avatar_module and hasattr(avatar_module, "set_talking_state"):
-            avatar_module.set_talking_state(preview_state.snapshot().machine_state == "talking")
+        if app_module and hasattr(app_module, "set_talking_state"):
+            app_module.set_talking_state(preview_state.snapshot().machine_state == "talking")
 
 
 def main() -> int:
@@ -377,7 +380,7 @@ def main() -> int:
                     if control_panel:
                         control_panel.handle_click(event.pos)
 
-            apply_state_to_app(app_names[app_index], preview_state)
+            apply_state_to_app(app_names[app_index], app, preview_state)
             app.update()
             app.render()
             physical_frame = pygame.transform.rotate(logical_surface, 270)
