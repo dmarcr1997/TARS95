@@ -11,6 +11,25 @@ import time
 import random
 import pygame
 
+from modules.UI.module_ui_tars95 import (
+    CANVAS_BLACK,
+    CAUTION_AMBER,
+    CHROME_FACE,
+    OFFLINE_GRAY,
+    PAPER_TEXT,
+    PHOSPHOR_CYAN,
+    READY_GREEN,
+    STATE_COLORS,
+    alert_color,
+    draw_grid,
+    draw_hazard_marks,
+    draw_label,
+    draw_status_bar,
+    draw_title_bar,
+    scale_for,
+    scaled,
+)
+
 # ---------------------------------------------------------------------------
 # Module-level state — set by module_chatui to drive the animation
 # ---------------------------------------------------------------------------
@@ -45,9 +64,12 @@ class AvatarApp:
     """Animated character avatar for the local TARS display."""
 
     def __init__(self, screen: pygame.Surface, width: int, height: int) -> None:
-        self.screen = screen
-        self.width = width
-        self.height = height
+        self.output_screen = screen
+        self.logical_width = width
+        self.logical_height = height
+        self.width = height
+        self.height = width
+        self.screen = pygame.Surface((self.width, self.height))
 
         # Derive src/ base dir: this file lives at src/modules/UI/apps/
         self._base_dir = os.path.dirname(
@@ -83,6 +105,11 @@ class AvatarApp:
         self._talk_frame_timer = 0.0
         self._talk_frame_interval = 0.1   # seconds between mouth frames
         self._mouth_open = True
+
+        self._machine_state = "STANDBY"
+        self._battery = None
+        self._alert = "NONE"
+        self._connectivity = "N/A"
 
         # Cached scaled frame
         self._current_surf: pygame.Surface | None = None
@@ -155,16 +182,25 @@ class AvatarApp:
             self._render_rect = None
             return
 
-        img_w, img_h = surf.get_size()
-        bar_h = int(self.height * 0.06)
-        available_h = self.height - bar_h
-        scale = available_h / img_h
-        new_w, new_h = int(img_w * scale), int(img_h * scale)
-        scaled = pygame.transform.smoothscale(surf, (new_w, new_h))
-        self._current_surf = scaled
-        x = (self.width - new_w) // 2
-        y = 0
-        self._render_rect = scaled.get_rect(topleft=(x, y))
+        # Character art is authored for the portrait logical canvas. Rotate it
+        # into the final landscape composition before the app boundary rotates.
+        oriented = pygame.transform.rotate(surf, 270)
+        tinted = oriented.copy()
+        tinted.fill((*CHROME_FACE, 255), special_flags=pygame.BLEND_RGBA_MULT)
+
+        ui_scale = self.height / 320.0
+        title_h = scaled(28, ui_scale)
+        status_h = scaled(25, ui_scale)
+        available = pygame.Rect(
+            scaled(22, ui_scale), title_h + scaled(18, ui_scale),
+            self.width - scaled(44, ui_scale),
+            self.height - title_h - status_h - scaled(34, ui_scale),
+        )
+        img_w, img_h = tinted.get_size()
+        image_scale = min(available.width / img_w, available.height / img_h)
+        new_w, new_h = max(1, int(img_w * image_scale)), max(1, int(img_h * image_scale))
+        self._current_surf = pygame.transform.smoothscale(tinted, (new_w, new_h))
+        self._render_rect = self._current_surf.get_rect(center=available.center)
 
     # ------------------------------------------------------------------
     # App framework interface
@@ -211,15 +247,85 @@ class AvatarApp:
             self._mouth_open = random.random() < 0.7
             self._talk_frame_timer = now
 
+        try:
+            from modules.module_state import get_tars_state
+            self._machine_state = str(get_tars_state().value).upper()
+        except Exception:
+            pass
+
         self._update_frame()
+
+    def set_preview_state(self, snapshot) -> None:
+        self._machine_state = str(snapshot.machine_state).upper()
+        self._battery = snapshot.battery
+        self._alert = str(snapshot.alert).upper()
+        self._connectivity = str(snapshot.connectivity).upper()
 
     def handle_event(self, event: pygame.event.Event) -> bool:
         return False
 
     def render(self) -> None:
-        self.screen.fill((0, 0, 0))
+        self.screen.fill(CANVAS_BLACK)
+        ui_scale = scale_for(self.screen)
+        title_h = scaled(28, ui_scale)
+        status_h = scaled(25, ui_scale)
+        draw_grid(
+            self.screen,
+            pygame.Rect(0, title_h, self.width, self.height - title_h - status_h),
+            step=scaled(32, ui_scale),
+        )
         if self._current_surf is not None and self._render_rect is not None:
             self.screen.blit(self._current_surf, self._render_rect)
+        else:
+            draw_label(
+                self.screen, "CHARACTER IMAGE N/A",
+                (self.width // 2 - scaled(70, ui_scale), self.height // 2),
+                size=scaled(10, ui_scale), color=OFFLINE_GRAY,
+            )
+
+        draw_hazard_marks(
+            self.screen,
+            pygame.Rect(
+                scaled(10, ui_scale), title_h + scaled(10, ui_scale),
+                scaled(28, ui_scale), scaled(3, ui_scale),
+            ),
+            segment=scaled(4, ui_scale),
+        )
+        draw_label(
+            self.screen, f"CHARACTER // {self._char_name.upper()}",
+            (scaled(44, ui_scale), title_h + scaled(8, ui_scale)),
+            size=scaled(8, ui_scale), color=CAUTION_AMBER,
+        )
+
+        machine_color = STATE_COLORS.get(self._machine_state, OFFLINE_GRAY)
+        draw_title_bar(
+            self.screen, "TARS/95", "IDENTITY // AVATAR", self._machine_state,
+            height=title_h,
+            state_color=alert_color(self._alert, machine_color),
+        )
+
+        battery = "N/A" if self._battery is None else f"{int(self._battery):03d}%"
+        battery_color = OFFLINE_GRAY if self._battery is None else (
+            (240, 68, 54) if self._battery <= 20
+            else CAUTION_AMBER if self._battery <= 40
+            else READY_GREEN
+        )
+        link_color = {
+            "ONLINE": READY_GREEN,
+            "DEGRADED": CAUTION_AMBER,
+            "OFFLINE": OFFLINE_GRAY,
+        }.get(self._connectivity, OFFLINE_GRAY)
+        draw_status_bar(
+            self.screen,
+            (
+                ("VOICE", "LIVE" if self._is_talking else "IDLE", PHOSPHOR_CYAN if self._is_talking else OFFLINE_GRAY),
+                ("EMO", self._emotion.upper(), PAPER_TEXT),
+                ("LINK", self._connectivity, link_color),
+                ("BAT", battery, battery_color),
+            ),
+            height=status_h,
+        )
+        self.output_screen.blit(pygame.transform.rotate(self.screen, 90), (0, 0))
 
     def cleanup(self) -> None:
         pass
