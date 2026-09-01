@@ -59,9 +59,9 @@ These tokens are the shared source values for pygame primitives and the offline 
 |---|---|---|
 | `canvas-black` | `#050708` | Deep background and inactive display area |
 | `desktop-teal` | `#167C79` | Desktop field and non-critical identity color |
-| `chrome-face` | `#C7C7C7` | Window, button, and toolbar face |
-| `chrome-highlight` | `#FFFFFF` | Raised top/left bevel |
-| `chrome-mid` | `#858585` | Secondary bevel and disabled detail |
+| `chrome-face` | `#D8C99B` | Warm manila window, button, and toolbar face |
+| `chrome-highlight` | `#FFF2C2` | Warm raised top/left bevel |
+| `chrome-mid` | `#8E805C` | Secondary bevel and disabled detail |
 | `chrome-shadow` | `#222222` | Recessed edge and strong outline |
 | `title-navy` | `#031C55` | Active title bar and selected structural region |
 | `screen-ink` | `#081116` | Instrument display background |
@@ -72,7 +72,7 @@ These tokens are the shared source values for pygame primitives and the offline 
 | `fault-red` | `#F04436` | Faults, destructive actions, and hard stops |
 | `offline-gray` | `#6F777A` | Unknown, disabled, disconnected, or unavailable |
 
-Do not use accent colors as decoration everywhere. Chrome supplies the Windows-era structure; signal colors communicate live state. Every status color must be paired with a label and, where space permits, a distinct icon or shape.
+Do not use accent colors as decoration everywhere. Warm manila is structural chrome, not a warning or a paper-texture effect. Chrome supplies the Windows-era structure; signal colors communicate live state. Every status color must be paired with a label and, where space permits, a distinct icon or shape.
 
 ## 5. Machine-state presentation
 

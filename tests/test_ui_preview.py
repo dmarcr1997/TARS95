@@ -108,7 +108,7 @@ class WebContractTests(unittest.TestCase):
         theme_response.close()
         for token in (
             "--t95-canvas-black: #050708",
-            "--t95-chrome-face: #c7c7c7",
+            "--t95-chrome-face: #d8c99b",
             "--t95-phosphor-cyan: #16d9c4",
             "--state-fault: var(--t95-fault-red)",
             "--font-mono: \"Lucida Console\"",
@@ -258,6 +258,9 @@ class BrowserRenderTests(unittest.TestCase):
             "getComputedStyle(document.documentElement).getPropertyValue('--t95-phosphor-cyan').trim()"
         ))
         self.assertEqual("none", page.locator("#particleBg").evaluate("element => getComputedStyle(element).display"))
+        self.assertEqual("rgb(216, 201, 155)", page.locator(".tab-bar").evaluate(
+            "element => getComputedStyle(element).backgroundColor"
+        ))
         self.assertEqual(5, page.locator(".custom-tab[data-bs-toggle='tab']").count())
         self.assertTrue(page.locator("#previewConsole").is_visible())
         if mobile:
