@@ -9,6 +9,28 @@ import pygame
 import threading
 import time
 
+from modules.UI.module_ui_tars95 import (
+    CANVAS_BLACK,
+    CAUTION_AMBER,
+    CHROME_FACE,
+    FAULT_RED,
+    NAVY,
+    OFFLINE_GRAY,
+    PANEL_LINE,
+    PANEL_MUTED,
+    PAPER_TEXT,
+    PHOSPHOR_CYAN,
+    READY_GREEN,
+    SCREEN_INK,
+    STATE_COLORS,
+    alert_color,
+    draw_grid,
+    draw_status_bar,
+    draw_title_bar,
+    load_font,
+    scaled,
+)
+
 # ── App states ────────────────────────────────────────────────────────────────
 _S_CHECKING   = "checking"      # Checking WiFi status
 _S_WIFI_LIST  = "wifi_list"     # Show available networks
@@ -41,35 +63,34 @@ _KB_ROWS_UPPER = [
 
 class RemoteApp:
     def __init__(self, screen, width, height):
-        self.screen = screen
-        self.width = width
-        self.height = height
+        self.output_screen = screen
+        self.logical_width = width
+        self.logical_height = height
+        self.width = height
+        self.height = width
+        self.screen = pygame.Surface((self.width, self.height))
+        self._ui_scale = self.height / 320.0
+        self._title_h = scaled(28, self._ui_scale)
+        self._status_h = scaled(25, self._ui_scale)
 
         # Colors
-        self.bg       = (5, 15, 20)
-        self.cyan     = (0, 255, 255)
-        self.dim_cyan = (0, 120, 150)
-        self.dark_cyan = (0, 60, 80)
-        self.white    = (200, 210, 220)
-        self.orange   = (255, 160, 0)
-        self.red      = (255, 80, 80)
-        self.green    = (0, 255, 120)
-        self.key_bg   = (20, 40, 50)
-        self.key_press = (0, 100, 120)
+        self.bg = CANVAS_BLACK
+        self.cyan = PHOSPHOR_CYAN
+        self.dim_cyan = PANEL_MUTED
+        self.dark_cyan = PANEL_LINE
+        self.white = PAPER_TEXT
+        self.orange = CAUTION_AMBER
+        self.red = FAULT_RED
+        self.green = READY_GREEN
+        self.key_bg = SCREEN_INK
+        self.key_press = NAVY
 
         # Fonts
-        try:
-            self.f_title  = pygame.font.Font("UI/mono.ttf", 24)
-            self.f_medium = pygame.font.Font("UI/mono.ttf", 16)
-            self.f_small  = pygame.font.Font("UI/mono.ttf", 12)
-            self.f_key    = pygame.font.Font("UI/mono.ttf", 16)
-            self.f_big    = pygame.font.Font("UI/mono.ttf", 18)
-        except Exception:
-            self.f_title  = pygame.font.SysFont("monospace", 24)
-            self.f_medium = pygame.font.SysFont("monospace", 16)
-            self.f_small  = pygame.font.SysFont("monospace", 12)
-            self.f_key    = pygame.font.SysFont("monospace", 16)
-            self.f_big    = pygame.font.SysFont("monospace", 18)
+        self.f_title = load_font(scaled(24, self._ui_scale), "pixel")
+        self.f_medium = load_font(scaled(14, self._ui_scale), "mono")
+        self.f_small = load_font(scaled(10, self._ui_scale), "mono")
+        self.f_key = load_font(scaled(14, self._ui_scale), "mono")
+        self.f_big = load_font(scaled(16, self._ui_scale), "mono")
 
         # State
         self._state = _S_CHECKING
@@ -96,6 +117,11 @@ class RemoteApp:
         self._qr_surface = None
         self._stop_btn_rect = None
 
+        self._machine_state = "STANDBY"
+        self._battery = None
+        self._alert = "NONE"
+        self._connectivity = "N/A"
+
         # Touch targets (rebuilt each render)
         self._net_rects = []      # [(rect, network_dict), ...]
         self._btn_rects = {}      # name -> rect
@@ -115,6 +141,22 @@ class RemoteApp:
 
     def update(self):
         self._frame += 1
+        try:
+            from modules.module_state import get_tars_state
+            self._machine_state = str(get_tars_state().value).upper()
+        except Exception:
+            pass
+
+    def set_preview_state(self, snapshot):
+        self._machine_state = str(snapshot.machine_state).upper()
+        self._battery = snapshot.battery
+        self._alert = str(snapshot.alert).upper()
+        self._connectivity = str(snapshot.connectivity).upper()
+        if self._state == _S_CHECKING:
+            if snapshot.connectivity == "online":
+                self._state = _S_IDLE
+            elif snapshot.connectivity == "offline":
+                self._state = _S_WIFI_LIST
 
     # ── Event handling ────────────────────────────────────────────────────────
 
@@ -122,7 +164,8 @@ class RemoteApp:
         if event.type != pygame.MOUSEBUTTONDOWN:
             return False
 
-        pos = event.pos
+        logical_x, logical_y = event.pos
+        pos = (self.width - 1 - logical_y, logical_x)
 
         # Generic named buttons
         for name, rect in self._btn_rects.items():
@@ -200,17 +243,16 @@ class RemoteApp:
 
     def render(self):
         self.screen.fill(self.bg)
+        draw_grid(
+            self.screen,
+            pygame.Rect(0, self._title_h, self.width, self.height - self._title_h - self._status_h),
+            step=scaled(32, self._ui_scale),
+        )
         self._btn_rects.clear()
         self._net_rects.clear()
         self._key_rects.clear()
 
-        # Title
-        title = self.f_title.render("REMOTE ACCESS", True, self.cyan)
-        tr = title.get_rect(centerx=self.width // 2, top=8)
-        self.screen.blit(title, tr)
-        line_y = tr.bottom + 4
-        pygame.draw.line(self.screen, self.dark_cyan, (16, line_y), (self.width - 16, line_y), 1)
-        content_top = line_y + 4
+        content_top = self._title_h + scaled(8, self._ui_scale)
 
         if self._state == _S_CHECKING:
             self._render_status("Checking WiFi...", self.orange, content_top)
@@ -232,6 +274,57 @@ class RemoteApp:
             self._render_error(content_top)
         elif self._state == _S_IDLE:
             self._render_idle(content_top)
+
+        state_labels = {
+            _S_CHECKING: "CHECKING",
+            _S_WIFI_LIST: "WIFI SELECT",
+            _S_WIFI_PASS: "PASSWORD",
+            _S_WIFI_CONN: "CONNECTING",
+            _S_TUNNEL_START: "TUNNEL START",
+            _S_HOTSPOT_START: "HOTSPOT START",
+            _S_HOTSPOT: "HOTSPOT LIVE",
+            _S_ACTIVE: "REMOTE LIVE",
+            _S_ERROR: "FAULT",
+            _S_IDLE: "IDLE",
+        }
+        app_state = state_labels.get(self._state, "N/A")
+        state_color = (
+            FAULT_RED if self._state == _S_ERROR
+            else READY_GREEN if self._state in {_S_HOTSPOT, _S_ACTIVE}
+            else CAUTION_AMBER if self._state in {_S_CHECKING, _S_WIFI_CONN, _S_TUNNEL_START, _S_HOTSPOT_START}
+            else OFFLINE_GRAY
+        )
+        draw_title_bar(
+            self.screen, "TARS/95", "REMOTE // SERVICE", app_state,
+            height=self._title_h,
+            state_color=alert_color(self._alert, state_color),
+        )
+
+        battery = "N/A" if self._battery is None else f"{int(self._battery):03d}%"
+        battery_color = OFFLINE_GRAY if self._battery is None else (
+            FAULT_RED if self._battery <= 20
+            else CAUTION_AMBER if self._battery <= 40
+            else READY_GREEN
+        )
+        link_color = {
+            "ONLINE": READY_GREEN,
+            "DEGRADED": CAUTION_AMBER,
+            "OFFLINE": OFFLINE_GRAY,
+        }.get(self._connectivity, OFFLINE_GRAY)
+        tunnel_value = "LIVE" if self._state == _S_ACTIVE else (
+            "START" if self._state == _S_TUNNEL_START else "N/A"
+        )
+        draw_status_bar(
+            self.screen,
+            (
+                ("WIFI", self._connectivity, link_color),
+                ("TUN", tunnel_value, READY_GREEN if tunnel_value == "LIVE" else OFFLINE_GRAY),
+                ("SYS", self._machine_state, STATE_COLORS.get(self._machine_state, OFFLINE_GRAY)),
+                ("BAT", battery, battery_color),
+            ),
+            height=self._status_h,
+        )
+        self.output_screen.blit(pygame.transform.rotate(self.screen, 90), (0, 0))
 
     # ── Status / spinner ──────────────────────────────────────────────────────
 
@@ -261,10 +354,10 @@ class RemoteApp:
         header_bottom = top_y + sub.get_height() + 6
 
         # Hotspot button pinned above bottom toolbar
-        bottom_margin = int(self.height * 0.06) + 6
+        bottom_margin = self._status_h + scaled(6, self._ui_scale)
         hotspot_h = 44
         hotspot_rect = pygame.Rect(list_left, self.height - hotspot_h - bottom_margin, list_w, hotspot_h)
-        pygame.draw.rect(self.screen, self.orange, hotspot_rect, border_radius=6)
+        pygame.draw.rect(self.screen, self.orange, hotspot_rect)
         hs_label = self.f_big.render("START HOTSPOT", True, self.bg)
         self.screen.blit(hs_label, hs_label.get_rect(center=hotspot_rect.center))
         self._btn_rects["start_hotspot"] = hotspot_rect
@@ -303,8 +396,9 @@ class RemoteApp:
             row_rect = pygame.Rect(list_left, y, list_w, row_h - 4)
 
             # Highlight if in use
-            bg_col = (0, 40, 50) if net.get("in_use") else (15, 25, 35)
-            pygame.draw.rect(self.screen, bg_col, row_rect, border_radius=6)
+            bg_col = NAVY if net.get("in_use") else SCREEN_INK
+            pygame.draw.rect(self.screen, bg_col, row_rect)
+            pygame.draw.rect(self.screen, PANEL_LINE, row_rect, 1)
 
             # SSID
             ssid_text = net["ssid"]
@@ -366,7 +460,7 @@ class RemoteApp:
         # Calculate keyboard height first so we can pin it above the bottom toolbar
         rows = _KB_ROWS_UPPER if self._kb_shift else _KB_ROWS_LOWER
         row_count = len(rows)
-        bottom_margin = int(self.height * 0.06) + 4  # clear the bottom toolbar
+        bottom_margin = self._status_h + scaled(4, self._ui_scale)
         key_h = min(40, (self.height * 2 // 5) // row_count - 2)
         kb_total_h = row_count * (key_h + 2)
         kb_top = self.height - kb_total_h - bottom_margin
@@ -378,14 +472,14 @@ class RemoteApp:
         half_w = (self.width - pad * 3) // 2
 
         back_rect = pygame.Rect(pad, btn_y, half_w, btn_h)
-        pygame.draw.rect(self.screen, self.dark_cyan, back_rect, border_radius=4)
+        pygame.draw.rect(self.screen, self.dark_cyan, back_rect)
         bs = self.f_big.render("BACK", True, self.white)
         self.screen.blit(bs, bs.get_rect(center=back_rect.center))
         self._btn_rects["back_to_list"] = back_rect
 
         conn_rect = pygame.Rect(pad * 2 + half_w, btn_y, half_w, btn_h)
         conn_color = self.cyan if self._password else self.dark_cyan
-        pygame.draw.rect(self.screen, conn_color, conn_rect, border_radius=4)
+        pygame.draw.rect(self.screen, conn_color, conn_rect)
         cs = self.f_big.render("CONNECT", True, self.bg)
         self.screen.blit(cs, cs.get_rect(center=conn_rect.center))
         if self._password:
@@ -407,8 +501,8 @@ class RemoteApp:
         # Password field
         field_y = content_top + ssid_surf.get_height() + 8
         field_rect = pygame.Rect(pad, field_y, self.width - pad * 2, field_h)
-        pygame.draw.rect(self.screen, self.key_bg, field_rect, border_radius=4)
-        pygame.draw.rect(self.screen, self.dim_cyan, field_rect, 1, border_radius=4)
+        pygame.draw.rect(self.screen, self.key_bg, field_rect)
+        pygame.draw.rect(self.screen, self.dim_cyan, field_rect, 1)
 
         if self._password:
             display = self._password if self._show_password else ("*" * len(self._password))
@@ -443,7 +537,7 @@ class RemoteApp:
     def _render_keyboard(self, top_y):
         """Draw the on-screen keyboard and populate _key_rects."""
         rows = _KB_ROWS_UPPER if self._kb_shift else _KB_ROWS_LOWER
-        bottom_margin = int(self.height * 0.06) + 4  # clear the bottom toolbar
+        bottom_margin = self._status_h + scaled(4, self._ui_scale)
         available_h = self.height - top_y - bottom_margin
         row_count = len(rows)
         key_h = min(40, available_h // row_count - 2)
@@ -456,7 +550,7 @@ class RemoteApp:
             # Space bar gets full width
             if row == ["space"]:
                 key_rect = pygame.Rect(pad, y, self.width - pad * 2, key_h)
-                pygame.draw.rect(self.screen, self.key_bg, key_rect, border_radius=3)
+                pygame.draw.rect(self.screen, self.key_bg, key_rect)
                 label = self.f_key.render("SPACE", True, self.dim_cyan)
                 self.screen.blit(label, label.get_rect(center=key_rect.center))
                 self._key_rects.append((key_rect, " "))
@@ -484,7 +578,7 @@ class RemoteApp:
                     display = key
                     text_col = self.white
 
-                pygame.draw.rect(self.screen, bg, key_rect, border_radius=3)
+                pygame.draw.rect(self.screen, bg, key_rect)
                 label = self.f_key.render(display, True, text_col)
                 self.screen.blit(label, label.get_rect(center=key_rect.center))
                 self._key_rects.append((key_rect, key))
@@ -527,14 +621,14 @@ class RemoteApp:
         # Stop hotspot button
         btn_w = max(self.width // 2, 160)
         btn_rect = pygame.Rect(cx - btn_w // 2, btn_top, btn_w, btn_h)
-        pygame.draw.rect(self.screen, self.red, btn_rect, border_radius=6)
+        pygame.draw.rect(self.screen, self.red, btn_rect)
         label = self.f_big.render("STOP HOTSPOT", True, self.bg)
         self.screen.blit(label, label.get_rect(center=btn_rect.center))
         self._btn_rects["stop_hotspot"] = btn_rect
 
         # Hint
         hint = self.f_small.render("Connect phone to WiFi, then scan QR", True, self.dim_cyan)
-        self.screen.blit(hint, hint.get_rect(centerx=cx, bottom=self.height - int(self.height * 0.06) - 4))
+        self.screen.blit(hint, hint.get_rect(centerx=cx, bottom=self.height - self._status_h - 4))
 
     # ── Active / QR code ──────────────────────────────────────────────────────
 
@@ -569,14 +663,14 @@ class RemoteApp:
         btn_w = max(self.width // 2, 160)
         btn_rect = pygame.Rect(cx - btn_w // 2, btn_top, btn_w, btn_h)
         self._btn_rects["stop_tunnel"] = btn_rect
-        pygame.draw.rect(self.screen, self.red, btn_rect, border_radius=6)
+        pygame.draw.rect(self.screen, self.red, btn_rect)
         label = self.f_big.render("STOP TUNNEL", True, self.bg)
         self.screen.blit(label, label.get_rect(center=btn_rect.center))
 
         # URL
         if self._url:
             display_url = self._url.replace("https://", "")
-            url_bottom = self.height - int(self.height * 0.06) - 4
+            url_bottom = self.height - self._status_h - 4
             us = self.f_small.render(display_url, True, self.dim_cyan)
             ur = us.get_rect(centerx=cx, bottom=url_bottom)
             if ur.width > self.width - 16:
@@ -612,9 +706,10 @@ class RemoteApp:
                 self.screen.blit(ls, ls.get_rect(centerx=cx, top=er.bottom + 12 + i * 16))
 
         # Retry button
-        btn_rect = pygame.Rect(cx - 80, self.height - int(self.height * 0.06) - 52, 160, 40)
-        pygame.draw.rect(self.screen, self.cyan, btn_rect, border_radius=6)
-        rs = self.f_big.render("RETRY", True, self.bg)
+        btn_rect = pygame.Rect(cx - 80, self.height - self._status_h - 52, 160, 40)
+        pygame.draw.rect(self.screen, CHROME_FACE, btn_rect)
+        pygame.draw.rect(self.screen, PANEL_LINE, btn_rect, 1)
+        rs = self.f_big.render("RETRY", True, NAVY)
         self.screen.blit(rs, rs.get_rect(center=btn_rect.center))
         self._btn_rects["retry"] = btn_rect
 
@@ -625,8 +720,9 @@ class RemoteApp:
         self.screen.blit(s, s.get_rect(centerx=self.width // 2, centery=self.height // 2 - 20))
 
         btn_rect = pygame.Rect(self.width // 2 - 80, self.height // 2 + 20, 160, 40)
-        pygame.draw.rect(self.screen, self.cyan, btn_rect, border_radius=6)
-        rs = self.f_big.render("RESTART", True, self.bg)
+        pygame.draw.rect(self.screen, CHROME_FACE, btn_rect)
+        pygame.draw.rect(self.screen, PANEL_LINE, btn_rect, 1)
+        rs = self.f_big.render("RESTART", True, NAVY)
         self.screen.blit(rs, rs.get_rect(center=btn_rect.center))
         self._btn_rects["retry"] = btn_rect
 
