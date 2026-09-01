@@ -12,38 +12,62 @@ import threading
 import collections
 import numpy as np
 
-# ── Colors ────────────────────────────────────────────────────────────────────
-BG         = (10, 14, 20)
-PANEL      = (14, 18, 30)
-BORDER     = (24, 30, 48)
-GRID       = (18, 22, 38)
-TEXT       = (200, 205, 220)
-TEXT_DIM   = (100, 108, 135)
-TEXT_VAL   = (220, 235, 255)
-DIM        = (45, 50, 70)
-ACCENT     = (0, 210, 240)
-WHITE_SOFT = (220, 225, 235)
+from modules.UI.module_ui_tars95 import (
+    CANVAS_BLACK,
+    CAUTION_AMBER,
+    CHROME_HIGHLIGHT,
+    FAULT_RED,
+    OFFLINE_GRAY,
+    PANEL_LINE,
+    PANEL_MUTED,
+    PAPER_TEXT,
+    PHOSPHOR_CYAN,
+    READY_GREEN,
+    SCREEN_INK,
+    STATE_COLORS,
+    alert_color,
+    draw_grid,
+    draw_hazard_marks,
+    draw_label,
+    draw_rule,
+    draw_status_bar,
+    draw_title_bar,
+    load_font,
+    scaled,
+)
 
-SPEECH      = (30, 210, 50)
-SPEECH_HI   = (140, 255, 160)
-TTS_COL     = (140, 60, 255)
-TTS_HI      = (200, 150, 255)
-NOISE_COL   = (220, 155, 20)
-NOISE_HI    = (255, 210, 60)
-WAKE_COL    = (0, 220, 255)
-WAKE_HI     = (120, 245, 255)
-BARGEIN_COL = (255, 50, 45)
-BARGEIN_HI  = (255, 130, 110)
+# ── Colors ────────────────────────────────────────────────────────────────────
+BG = CANVAS_BLACK
+PANEL = SCREEN_INK
+BORDER = PANEL_LINE
+GRID = (10, 28, 30)
+TEXT = PAPER_TEXT
+TEXT_DIM = PANEL_MUTED
+TEXT_VAL = PAPER_TEXT
+DIM = PANEL_LINE
+ACCENT = PHOSPHOR_CYAN
+WHITE_SOFT = PAPER_TEXT
+
+SPEECH = READY_GREEN
+SPEECH_HI = (170, 255, 196)
+TTS_COL = PHOSPHOR_CYAN
+TTS_HI = (168, 255, 245)
+NOISE_COL = CAUTION_AMBER
+NOISE_HI = CHROME_HIGHLIGHT
+WAKE_COL = PHOSPHOR_CYAN
+WAKE_HI = (168, 255, 245)
+BARGEIN_COL = FAULT_RED
+BARGEIN_HI = (255, 150, 132)
 
 # STT zone colors
-ZONE_SILENCE = (40, 45, 65)      # below noise floor
-ZONE_NOISE   = (200, 130, 20)    # noise zone (floor → threshold)
-ZONE_SPEECH  = (30, 210, 50)     # above threshold
+ZONE_SILENCE = PANEL_LINE
+ZONE_NOISE = CAUTION_AMBER
+ZONE_SPEECH = READY_GREEN
 
 # SNR meter zone colors
-SNR_BAD  = (220, 50, 40)
-SNR_WARN = (220, 155, 20)
-SNR_GOOD = (30, 210, 50)
+SNR_BAD = FAULT_RED
+SNR_WARN = CAUTION_AMBER
+SNR_GOOD = READY_GREEN
 
 STATE_COLOR = {
     'STANDBY':   DIM,
@@ -78,11 +102,7 @@ _LANE_META = [
     {'name': 'STATE',    'color': ACCENT,      'hi': ACCENT},
 ]
 
-_GHOST_LAYERS = [
-    {'alpha': 0.12, 'smooth': 7},
-    {'alpha': 0.22, 'smooth': 5},
-    {'alpha': 0.38, 'smooth': 3},
-]
+_GHOST_LAYERS = []
 _MAIN_SMOOTH = 2
 _RMS_MAX     = 0.06
 _STATS_W     = 76   # right-side diagnostics panel width
@@ -99,26 +119,23 @@ def _smooth_array(arr, window):
 
 class AudioTimelineApp:
     def __init__(self, screen, width, height):
-        self.screen = screen
-        self.width  = width
-        self.height = height
+        self.output_screen = screen
+        self.logical_width = width
+        self.logical_height = height
+        self.width = height
+        self.height = width
+        self.screen = pygame.Surface((self.width, self.height))
+        self._ui_scale = self.height / 320.0
+        self._title_h = scaled(28, self._ui_scale)
+        self._status_h = scaled(25, self._ui_scale)
 
-        try:
-            self.font       = pygame.font.Font("UI/mono.ttf", 13)
-            self.font_sm    = pygame.font.Font("UI/mono.ttf", 11)
-            self.font_lg    = pygame.font.Font("UI/mono.ttf", 15)
-            self.font_label = pygame.font.Font("UI/mono.ttf", 11)
-            self.font_val   = pygame.font.Font("UI/mono.ttf", 12)
-            self.font_state = pygame.font.Font("UI/mono.ttf", 9)
-            self.font_xs    = pygame.font.Font("UI/mono.ttf", 9)
-        except Exception:
-            self.font       = pygame.font.SysFont("monospace", 13)
-            self.font_sm    = pygame.font.SysFont("monospace", 11)
-            self.font_lg    = pygame.font.SysFont("monospace", 15)
-            self.font_label = pygame.font.SysFont("monospace", 11)
-            self.font_val   = pygame.font.SysFont("monospace", 12)
-            self.font_state = pygame.font.SysFont("monospace", 9)
-            self.font_xs    = pygame.font.SysFont("monospace", 9)
+        self.font = load_font(scaled(13, self._ui_scale), "mono")
+        self.font_sm = load_font(scaled(10, self._ui_scale), "mono")
+        self.font_lg = load_font(scaled(15, self._ui_scale), "mono")
+        self.font_label = load_font(scaled(10, self._ui_scale), "mono")
+        self.font_val = load_font(scaled(11, self._ui_scale), "mono")
+        self.font_state = load_font(scaled(8, self._ui_scale), "mono")
+        self.font_xs = load_font(scaled(8, self._ui_scale), "mono")
 
         # Timeline data
         self._segments    = []
@@ -140,6 +157,10 @@ class AudioTimelineApp:
         self._cur_state = 'STANDBY'
         self._cur_rms   = 0.0
         self._t0 = time.time()
+        self._machine_state = "STANDBY"
+        self._battery = None
+        self._alert = "NONE"
+        self._connectivity = "N/A"
 
         # Peak hold
         self._peak_rms  = 0.0
@@ -163,21 +184,22 @@ class AudioTimelineApp:
         self._stt_cache_time   = 0.0
 
         # Layout
-        self._pad          = 8
-        self._legend_h     = 26
-        self._toolbar_h    = int(height * 0.06) + 4
-        self._footer_row_h = 18
-        self._time_axis_h  = 12
+        self._pad = scaled(8, self._ui_scale)
+        self._legend_h = scaled(24, self._ui_scale)
+        self._toolbar_h = self._status_h
+        self._footer_row_h = scaled(18, self._ui_scale)
+        self._time_axis_h = scaled(12, self._ui_scale)
         self._bottom_margin = self._footer_row_h + 8 + self._toolbar_h
 
-        chart_top = self._pad + self._legend_h + 4
+        chart_top = self._title_h + self._pad + self._legend_h + scaled(4, self._ui_scale)
         chart_bot = height - self._bottom_margin - self._pad - self._time_axis_h
         self._chart_rect = (self._pad, chart_top,
                             width - self._pad * 2, chart_bot - chart_top)
         self._time_axis_y = chart_bot
 
-        # Full chart draw width for all swim lanes
-        self._cwr = self._chart_rect[2]
+        # Reserve a real diagnostic column instead of overlaying it on lanes.
+        stats_w = scaled(_STATS_W, self._ui_scale)
+        self._cwr = self._chart_rect[2] - stats_w - scaled(4, self._ui_scale)
 
         # Swim lane pixel regions
         ch = chart_bot - chart_top
@@ -189,18 +211,32 @@ class AudioTimelineApp:
                                 'center': y + lh // 2, 'bot': y + lh})
             y += lh
 
-        # Stats panel anchored beside STATE lane (may extend below into time axis gap)
-        self._lower_cwr = self._cwr - _STATS_W - 4
+        # Stats panel spans the chart height and never overlaps the footer.
+        self._lower_cwr = self._cwr
         self._sp_x = self._pad + self._lower_cwr + 4
-        self._sp_y = self._lanes[_LANE_STATE]['top']
-        self._sp_w = _STATS_W - 2
-        self._sp_h = max(self._lanes[_LANE_STATE]['h'], 100)
+        self._sp_y = chart_top
+        self._sp_w = stats_w - 2
+        self._sp_h = chart_bot - chart_top
 
     # ── Lifecycle ─────────────────────────────────────────────────────────
 
     def reset(self):   self._start_audio()
     def cleanup(self): self._stop_audio()
-    def update(self):  pass
+    def update(self):
+        try:
+            from modules.module_state import get_tars_state
+            self._machine_state = str(get_tars_state().value).upper()
+            if not self._running:
+                self._cur_state = self._machine_state
+        except Exception:
+            pass
+
+    def set_preview_state(self, snapshot):
+        self._machine_state = str(snapshot.machine_state).upper()
+        self._cur_state = self._machine_state
+        self._battery = snapshot.battery
+        self._alert = str(snapshot.alert).upper()
+        self._connectivity = str(snapshot.connectivity).upper()
 
     # ── Audio hookup ──────────────────────────────────────────────────────
 
@@ -362,6 +398,11 @@ class AudioTimelineApp:
 
     def render(self):
         self.screen.fill(BG)
+        draw_grid(
+            self.screen,
+            pygame.Rect(0, self._title_h, self.width, self.height - self._title_h - self._status_h),
+            step=scaled(32, self._ui_scale),
+        )
         self._refresh_stt_cache()
 
         with self._lock:
@@ -378,12 +419,14 @@ class AudioTimelineApp:
         if not segs:
             self._draw_waiting()
             self._draw_footer()
+            self._finish_frame()
             return
 
         latest = segs[-1]['t']
         ws  = latest - VIEW_SECONDS
         vis = [s for s in segs if s['t'] >= ws]
         if not vis:
+            self._finish_frame()
             return
 
         last = vis[-1]
@@ -394,15 +437,73 @@ class AudioTimelineApp:
         self._draw_stats_panel(cur_rms, peak_rms, peak_time, noise_floor,
                                thr, latest)
         self._draw_footer()
+        self._finish_frame()
+
+    def _finish_frame(self):
+        machine_color = STATE_COLORS.get(self._machine_state, OFFLINE_GRAY)
+        draw_title_bar(
+            self.screen, "TARS/95", "AUDIO // SIGNAL", self._machine_state,
+            height=self._title_h,
+            state_color=alert_color(self._alert, machine_color),
+        )
+
+        battery = "N/A" if self._battery is None else f"{int(self._battery):03d}%"
+        battery_color = OFFLINE_GRAY if self._battery is None else (
+            FAULT_RED if self._battery <= 20
+            else CAUTION_AMBER if self._battery <= 40
+            else READY_GREEN
+        )
+        link_color = {
+            "ONLINE": READY_GREEN,
+            "DEGRADED": CAUTION_AMBER,
+            "OFFLINE": OFFLINE_GRAY,
+        }.get(self._connectivity, OFFLINE_GRAY)
+        mic_value = "LIVE" if self._running else "N/A"
+        rms_value = f"{self._cur_rms:.3f}" if self._running else "N/A"
+        draw_status_bar(
+            self.screen,
+            (
+                ("MIC", mic_value, PHOSPHOR_CYAN if self._running else OFFLINE_GRAY),
+                ("RMS", rms_value, SPEECH if self._running else OFFLINE_GRAY),
+                ("LINK", self._connectivity, link_color),
+                ("BAT", battery, battery_color),
+            ),
+            height=self._status_h,
+        )
+        self.output_screen.blit(pygame.transform.rotate(self.screen, 90), (0, 0))
 
     # ── Waiting ───────────────────────────────────────────────────────────
 
     def _draw_waiting(self):
-        pulse = 0.5 + 0.5 * math.sin(time.time() * 2.0)
-        msg = self.font_lg.render("Waiting for audio...", True, ACCENT)
-        msg.set_alpha(int(80 + 120 * pulse))
-        self.screen.blit(msg, (self.width // 2 - msg.get_width() // 2,
-                                self.height // 2 - msg.get_height() // 2))
+        marker_y = self._title_h + self._legend_h + scaled(32, self._ui_scale)
+        draw_hazard_marks(
+            self.screen,
+            pygame.Rect(
+                self.width // 2 - scaled(72, self._ui_scale), marker_y,
+                scaled(28, self._ui_scale), scaled(3, self._ui_scale),
+            ),
+            segment=scaled(4, self._ui_scale),
+        )
+        draw_label(
+            self.screen, "INPUT BUS // 01",
+            (self.width // 2 - scaled(38, self._ui_scale), marker_y - scaled(3, self._ui_scale)),
+            size=scaled(8, self._ui_scale), color=CAUTION_AMBER,
+        )
+        message = "WAITING FOR SIGNAL" if self._running else "AUDIO INPUT N/A"
+        msg = self.font_lg.render(message, True, ACCENT if self._running else PAPER_TEXT)
+        self.screen.blit(msg, msg.get_rect(center=(self.width // 2, self.height // 2)))
+        detail = "CAPTURE ARMED" if self._running else "NO SAMPLE STREAM"
+        draw_label(
+            self.screen, detail,
+            (self.width // 2 - scaled(42, self._ui_scale), self.height // 2 + scaled(24, self._ui_scale)),
+            size=scaled(8, self._ui_scale), color=OFFLINE_GRAY,
+        )
+        draw_rule(
+            self.screen,
+            (scaled(72, self._ui_scale), self.height // 2 + scaled(49, self._ui_scale)),
+            (self.width - scaled(72, self._ui_scale), self.height // 2 + scaled(49, self._ui_scale)),
+            PANEL_LINE,
+        )
 
     # ── Legend ────────────────────────────────────────────────────────────
 
@@ -418,10 +519,7 @@ class AudioTimelineApp:
         ix = (self.width - total_w) // 2
         for surf, color in rendered:
             pill_h, py = 8, y + (self._legend_h - 8) // 2 - 2
-            glow = pygame.Surface((14, 14), pygame.SRCALPHA)
-            pygame.draw.rect(glow, (*color, 35), (0, 0, 14, 14), border_radius=5)
-            self.screen.blit(glow, (ix - 3, py - 3))
-            pygame.draw.rect(self.screen, color, (ix, py, 8, pill_h), border_radius=3)
+            pygame.draw.rect(self.screen, color, (ix, py, 8, pill_h))
             self.screen.blit(surf, (ix + 14, y + (self._legend_h - surf.get_height()) // 2 - 2))
             ix += 14 + surf.get_width() + 16
 
@@ -670,30 +768,11 @@ class AudioTimelineApp:
 
     def _draw_edge_line(self, edge, hi_color, fill_color):
         for i in range(len(edge) - 1):
-            pygame.draw.line(self.screen, (*fill_color, 35), edge[i], edge[i+1], 5)
-        for i in range(len(edge) - 1):
-            pygame.draw.line(self.screen, (*fill_color, 70), edge[i], edge[i+1], 3)
-        for i in range(len(edge) - 1):
-            pygame.draw.line(self.screen, hi_color, edge[i], edge[i+1], 2)
+            pygame.draw.line(self.screen, hi_color, edge[i], edge[i+1], 1)
 
     def _draw_centered_blooms(self, xs, heights, cy_, half_h, hi_color):
-        bloom_thr = half_h * 0.50
-        for i, h in enumerate(heights):
-            if h < bloom_thr:
-                continue
-            ph = heights[i-1] if i > 0 else 0
-            nh = heights[i+1] if i < len(heights)-1 else 0
-            if h < ph or h < nh:
-                continue
-            intensity = min(1.0, (h - bloom_thr) / (half_h * 0.4))
-            br = int(10 + 14 * intensity)
-            bloom = pygame.Surface((br*2, br*2), pygame.SRCALPHA)
-            for ring in range(br, 0, -1):
-                a = int(50 * intensity * (1.0 - (ring/br)**2))
-                if a > 0:
-                    pygame.draw.circle(bloom, (*hi_color, a), (br, br), ring)
-            self.screen.blit(bloom, (xs[i]-br, cy_ - int(h) - br))
-            self.screen.blit(bloom, (xs[i]-br, cy_ + int(h) - br))
+        # Peak information remains in the edge line and meter; no glow layer.
+        return
 
     # ── Threshold line ────────────────────────────────────────────────────
 
@@ -725,13 +804,6 @@ class AudioTimelineApp:
             if mx < cl or mx > cl + cwr:
                 continue
 
-            gw = 16
-            glow = pygame.Surface((gw, h), pygame.SRCALPHA)
-            for gx in range(gw):
-                dist = abs(gx - gw//2) / (gw/2)
-                a = int(30 * (1.0 - dist*dist))
-                pygame.draw.line(glow, (*color, a), (gx, 0), (gx, h))
-            self.screen.blit(glow, (mx - gw//2, top))
             pygame.draw.line(self.screen, color, (mx, top), (mx, bot), 2)
 
             d = 4
@@ -741,9 +813,8 @@ class AudioTimelineApp:
 
             tag = self.font_state.render(meta['name'], True, WHITE_SOFT)
             pw, ph = tag.get_width() + 6, tag.get_height() + 2
-            pill = pygame.Surface((pw, ph), pygame.SRCALPHA)
-            pill.fill((color[0]//6, color[1]//6, color[2]//6, 200))
-            pygame.draw.rect(pill, (*color, 120), (0, 0, pw, ph), 1, border_radius=3)
+            pill = pygame.Surface((pw, ph))
+            pill.fill(SCREEN_INK)
             if mx + 10 + pw < cl + cwr:
                 self.screen.blit(pill, (mx+6, top+2))
                 self.screen.blit(tag,  (mx+9, top+3))
@@ -780,7 +851,7 @@ class AudioTimelineApp:
                 pygame.draw.line(block, (*sc, 70), (0, h-pad-1), (bw, h-pad-1))
             self.screen.blit(block, (x1, top))
             pygame.draw.rect(self.screen, (*sc, 50),
-                             (x1, top+pad, bw, h-pad*2), 1, border_radius=2)
+                             (x1, top+pad, bw, h-pad*2), 1)
             lbl = self.font_state.render(state, True, sc)
             if bw > lbl.get_width() + 6:
                 self.screen.blit(lbl, (x1 + (bw - lbl.get_width()) // 2,
@@ -824,9 +895,9 @@ class AudioTimelineApp:
         ph = self._sp_h
 
         # Panel background
-        bg = pygame.Surface((pw, ph), pygame.SRCALPHA)
-        bg.fill((*PANEL, 200))
-        pygame.draw.rect(bg, (*BORDER, 100), (0, 0, pw, ph), 1, border_radius=3)
+        bg = pygame.Surface((pw, ph))
+        bg.fill(PANEL)
+        pygame.draw.rect(bg, BORDER, (0, 0, pw, ph), 1)
         self.screen.blit(bg, (px, py))
 
         snr = cur_rms / max(nf, 1e-6)
@@ -844,12 +915,10 @@ class AudioTimelineApp:
         bar_h = 7
         rms_frac  = min(1.0, cur_rms / _RMS_MAX)
         peak_frac = min(1.0, peak_rms / _RMS_MAX)
-        pygame.draw.rect(self.screen, (*DIM, 50),
-                         (px + 3, ry, bar_w, bar_h), border_radius=2)
+        pygame.draw.rect(self.screen, DIM, (px + 3, ry, bar_w, bar_h))
         if rms_frac > 0:
             pygame.draw.rect(self.screen, rms_color,
-                             (px + 3, ry, max(2, int(bar_w * rms_frac)), bar_h),
-                             border_radius=2)
+                             (px + 3, ry, max(2, int(bar_w * rms_frac)), bar_h))
         if peak_alpha > 20:
             pk_x = px + 3 + int(bar_w * peak_frac)
             pk_surf = pygame.Surface((2, bar_h), pygame.SRCALPHA)
@@ -884,8 +953,7 @@ class AudioTimelineApp:
 
         # ── Row 5: SNR bar ────────────────────────────────────────────
         snr_bar_h = 6
-        pygame.draw.rect(self.screen, (*DIM, 50),
-                         (px + 3, ry, bar_w, snr_bar_h), border_radius=2)
+        pygame.draw.rect(self.screen, DIM, (px + 3, ry, bar_w, snr_bar_h))
         fill_frac = min(1.0, snr / 6.0)
         fill_w = max(2, int(bar_w * fill_frac))
         bad_w  = min(fill_w, int(bar_w * (1.5 / 6.0)))
@@ -893,15 +961,14 @@ class AudioTimelineApp:
         good_w = max(0, fill_w - bad_w - warn_w)
         bx = px + 3
         if bad_w > 0:
-            pygame.draw.rect(self.screen, SNR_BAD,  (bx, ry, bad_w,  snr_bar_h), border_radius=2)
+            pygame.draw.rect(self.screen, SNR_BAD, (bx, ry, bad_w, snr_bar_h))
             bx += bad_w
         if warn_w > 0:
             pygame.draw.rect(self.screen, SNR_WARN, (bx, ry, warn_w, snr_bar_h))
             bx += warn_w
         if good_w > 0:
             pygame.draw.rect(self.screen, SNR_GOOD, (bx, ry, good_w, snr_bar_h))
-        pygame.draw.rect(self.screen, (*BORDER, 120),
-                         (px + 3, ry, bar_w, snr_bar_h), 1, border_radius=2)
+        pygame.draw.rect(self.screen, BORDER, (px + 3, ry, bar_w, snr_bar_h), 1)
         for threshold_snr in (1.5, 3.0):
             mx = px + 3 + int(bar_w * threshold_snr / 6.0)
             pygame.draw.line(self.screen, (*BORDER, 200), (mx, ry), (mx, ry + snr_bar_h), 1)
@@ -934,11 +1001,7 @@ class AudioTimelineApp:
         y   = self.height - self._toolbar_h - self._footer_row_h - 4
         w   = self.width - pad * 2
 
-        sep = pygame.Surface((w - 4, 1), pygame.SRCALPHA)
-        for sx in range(w - 4):
-            frac = 1.0 - abs(sx - (w-4)/2) / ((w-4)/2)
-            sep.set_at((sx, 0), (*BORDER, int(40 * frac)))
-        self.screen.blit(sep, (pad + 2, y - 3))
+        draw_rule(self.screen, (pad + 2, y - 3), (pad + w - 2, y - 3), BORDER)
 
         elapsed = int(time.time() - self._t0)
         mins, secs = divmod(elapsed, 60)
@@ -951,10 +1014,7 @@ class AudioTimelineApp:
 
         ix = pad + 4
         for label, val, color in counters:
-            dot = pygame.Surface((8, 8), pygame.SRCALPHA)
-            pygame.draw.circle(dot, (*color, 50), (4, 4), 4)
-            pygame.draw.circle(dot, color, (4, 4), 3)
-            self.screen.blit(dot, (ix, y + 4))
+            pygame.draw.rect(self.screen, color, (ix + 2, y + 6, 4, 4))
             ix += 12
             lbl = self.font_sm.render(label, True, TEXT_DIM)
             self.screen.blit(lbl, (ix, y + 2))
@@ -971,17 +1031,5 @@ class AudioTimelineApp:
         bw   = stxt.get_width() + 16
         bh   = self._footer_row_h
         bx   = pad + w - bw - 2
-
-        badge = pygame.Surface((bw, bh), pygame.SRCALPHA)
-        pygame.draw.rect(badge, (*sc, 12), (0, 0, bw, bh), border_radius=4)
-        pygame.draw.rect(badge, (*sc, 60), (0, 0, bw, bh), 1, border_radius=4)
-        self.screen.blit(badge, (bx, y))
-
-        if self._cur_state in ('LISTENING', 'THINKING', 'TALKING'):
-            pulse = 0.5 + 0.5 * math.sin(time.time() * 3.5)
-            pdot = pygame.Surface((6, 6), pygame.SRCALPHA)
-            pygame.draw.circle(pdot, (*sc, int(130 + 125 * pulse)), (3, 3), 3)
-            self.screen.blit(pdot, (bx + 4, y + bh // 2 - 3))
-
-        self.screen.blit(stxt, (bx + (bw - stxt.get_width()) // 2,
-                                 y + (bh - stxt.get_height()) // 2))
+        pygame.draw.rect(self.screen, sc, (bx + 2, y + bh // 2 - 2, 4, 4))
+        self.screen.blit(stxt, (bx + 10, y + (bh - stxt.get_height()) // 2))

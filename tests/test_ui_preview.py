@@ -244,6 +244,9 @@ class DeviceRenderTests(unittest.TestCase):
         with Image.open(screenshot) as image:
             if image.size != expected_size:
                 raise AssertionError(f"expected {expected_size}, got {image.size}")
+            header_pixel = image.convert("RGB").getpixel((expected_size[0] // 2, 10))
+            if header_pixel != (216, 201, 155):
+                raise AssertionError(f"shared TARS95 header missing: {header_pixel}")
 
 
 class BrowserRenderTests(unittest.TestCase):
