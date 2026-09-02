@@ -172,6 +172,60 @@ class WebContractTests(unittest.TestCase):
 
 
 class DeviceRenderTests(unittest.TestCase):
+    def test_boot_sequence_is_deterministic_and_hands_off_to_eyes(self) -> None:
+        code = """
+import os
+import sys
+from pathlib import Path
+
+os.environ['SDL_VIDEODRIVER'] = 'dummy'
+os.environ['SDL_AUDIODRIVER'] = 'dummy'
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+root = Path(r'{root}')
+sys.path.insert(0, str(root / 'tools' / 'ui-preview'))
+sys.path.insert(0, str(root / 'src'))
+sys.path.insert(0, str(root / 'src' / 'modules'))
+
+from preview_state import PreviewStateStore
+from device_preview import install_preview_stubs
+install_preview_stubs(PreviewStateStore())
+
+import pygame
+pygame.display.init()
+pygame.font.init()
+pygame.display.set_mode((480, 320))
+
+from modules.UI.apps.module_app_boot import BOOT_STEPS, BootSequence
+from modules.UI.module_ui_apps import AppManager
+
+sequence = BootSequence()
+assert sequence.TOTAL_MS == 2640
+assert sequence.snapshot(0).completed_steps == 0
+assert sequence.snapshot(sequence.STEP_MS).completed_steps == 1
+assert not sequence.snapshot(sequence.TOTAL_MS - 1).complete
+assert sequence.snapshot(sequence.TOTAL_MS).complete
+assert ('DEVICE I/O', 'DEFERRED') in BOOT_STEPS
+assert ('MOTION OUTPUT', 'LOCKED') in BOOT_STEPS
+
+surface = pygame.Surface((320, 480))
+manager = AppManager(surface, 320, 480, display_width=480, display_height=320, rotation=270)
+assert 'boot' not in [app['name'] for app in manager.get_available_apps()]
+assert manager.start_boot('eyes')
+assert manager.current_app_name == 'boot'
+assert manager.is_system_app_active()
+manager.current_app._started_ms = pygame.time.get_ticks() - sequence.TOTAL_MS
+assert manager.render()
+assert manager.current_app_name == 'eyes'
+assert not manager.is_system_app_active()
+manager.deactivate()
+pygame.quit()
+""".format(root=str(REPO_ROOT))
+        result = subprocess.run(
+            [sys.executable, "-c", code], cwd=REPO_ROOT,
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
     def test_machine_state_presentation_contract_and_priority(self) -> None:
         code = """
 import sys

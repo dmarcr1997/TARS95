@@ -686,9 +686,13 @@ class UIManager(threading.Thread):
                 if self.terminal_system and self.app_manager:
                     self.terminal_system.set_available_apps(self.app_manager.get_available_apps())
 
-                startup_app = CONFIG['UI'].get('app', 'terminal')
-                if startup_app and startup_app.lower() != 'terminal':
-                    self.launch_app(startup_app.lower())
+                # TARS/95 always performs a short, hardware-safe self-test and
+                # hands off to Eyes as its living home surface.
+                if self.app_manager.start_boot("eyes"):
+                    self.show_app = True
+                    self.app_switch_time = pygame.time.get_ticks()
+                    if self.terminal_system:
+                        self.terminal_system.set_app_active(True)
 
             except Exception as e:
                 import traceback
@@ -734,6 +738,8 @@ class UIManager(threading.Thread):
                             continue
 
                         if event.key == pygame.K_ESCAPE:
+                            if self.show_app and self.app_manager and self.app_manager.is_system_app_active():
+                                continue
                             if self.show_app:
                                 self.exit_app()
                             else:
@@ -760,7 +766,9 @@ class UIManager(threading.Thread):
                             if self.app_manager and self.app_manager.is_active():
                                 app_event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=logical_pos, button=event.button)
                                 self.app_manager.handle_event(app_event)
-                            if self.terminal_system:
+                            if self.terminal_system and not (
+                                self.app_manager and self.app_manager.is_system_app_active()
+                            ):
                                 self.terminal_system.handle_app_click(logical_pos)
                         else:
                             if self.screensaver_manager:
@@ -846,7 +854,7 @@ class UIManager(threading.Thread):
                     needs_flip = self.app_manager.render()
 
                     if needs_flip:
-                        if self.terminal_system:
+                        if self.terminal_system and not self.app_manager.is_system_app_active():
                             self.terminal_system.draw_back_button(original_surface)
 
                         if self.effective_rotate != 0:
@@ -856,7 +864,7 @@ class UIManager(threading.Thread):
                             self._render_surface_to_opengl(original_surface, texture_id)
                         pygame.display.flip()
                     else:
-                        if self.terminal_system:
+                        if self.terminal_system and not self.app_manager.is_system_app_active():
                             self._draw_gl_back_button()
                         pygame.display.flip()
 

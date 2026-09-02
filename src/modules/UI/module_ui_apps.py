@@ -29,6 +29,7 @@ except ImportError:
 
 from modules.UI.apps.module_app_clock import ClockApp
 from modules.UI.apps.module_app_audio_timeline import AudioTimelineApp
+from modules.UI.apps.module_app_boot import BootApp
 
 try:
     from modules.UI.apps.module_app_eyes import EyesApp
@@ -51,6 +52,7 @@ except Exception:
 from UI.screensavers.module_screensaver_dashboard import DashboardAnimation
 
 AVAILABLE_APPS = {
+    "boot": {"class": BootApp, "type": "pygame", "label": "Power-On", "system": True},
     "clock": {"class": ClockApp, "type": "pygame", "label": "Clock"},
     "dashboard": {"class": DashboardAnimation, "type": "opengl", "label": "Dashboard"},
     **({"eyes": {"class": EyesApp, "type": "pygame", "label": "Eyes"}} if HAS_EYES else {}),
@@ -83,6 +85,7 @@ class AppManager:
         self.current_app_name = None
         self.current_app_type = None
         self.failed_apps = set()
+        self.boot_target = "eyes"
 
         self.gl_mode_active = False
         try:
@@ -99,7 +102,18 @@ class AppManager:
         return [
             {"name": name, "label": info["label"]}
             for name, info in AVAILABLE_APPS.items()
+            if not info.get("system", False)
         ]
+
+    def start_boot(self, target="eyes"):
+        """Start the system-only power-on sequence and queue its handoff."""
+        self.boot_target = target if target in AVAILABLE_APPS and target != "boot" else "eyes"
+        return self.launch("boot")
+
+    def is_system_app_active(self):
+        if not self.current_app_name:
+            return False
+        return AVAILABLE_APPS.get(self.current_app_name, {}).get("system", False)
 
     def launch(self, app_name):
         if self.current_app and hasattr(self.current_app, 'cleanup'):
@@ -150,6 +164,9 @@ class AppManager:
                 return False
             else:
                 self.current_app.render()
+
+                if self.current_app_name == "boot" and getattr(self.current_app, "complete", False):
+                    self.launch(self.boot_target)
 
                 if self.gl_mode_active and HAS_OPENGL:
                     self.screen.blit(self.offscreen_surface, (0, 0))

@@ -336,8 +336,8 @@
           <div class="readout-row"><span>BRANCH</span><span>V3</span></div>
           <div class="readout-row"><span>BASELINE</span><span>7593f8c</span></div>
           <div class="readout-row"><span>SURFACES</span><span>PYGAME + WEB</span></div>
-          <div class="readout-row"><span><i class="lamp amber"></i>BUILD STATE</span><span>SHELL PROOF READY</span></div>
-          <div class="readout-row"><span>NEXT ACTION</span><span>UI-013</span></div>
+          <div class="readout-row"><span><i class="lamp amber"></i>BUILD STATE</span><span>BOOT HANDOFF READY</span></div>
+          <div class="readout-row"><span>NEXT ACTION</span><span>UI-014</span></div>
         </aside>
       </div>
       <div class="stats">
@@ -424,8 +424,8 @@
             <tr data-phase="1" data-state="done"><td class="id">UI-012</td><td><span class="status">Done</span></td><td class="task"><b>Create the first visual proof</b><small>One static shell composition demonstrates the full direction at 480×320 before deeper implementation.</small></td><td>Review</td><td class="commit">feat(ui): add shell proof</td></tr>
 
             <tr class="phase-row" data-phase="2"><td colspan="5">Phase 2 — Build the robot-facing operating system</td></tr>
-            <tr data-phase="2" data-state="next"><td class="id">UI-013</td><td><span class="status">Next</span></td><td class="task"><b>Build the boot/self-test sequence</b><small>Short deterministic startup shows subsystem checks and hands off cleanly to the shell.</small></td><td>Device</td><td class="commit">feat(ui): add TARS95 boot sequence</td></tr>
-            <tr data-phase="2" data-state="planned"><td class="id">UI-014</td><td><span class="status">Planned</span></td><td class="task"><b>Build desktop shell, taskbar, and launcher</b><small>Touch targets work at both device sizes; active app and machine state stay visible.</small></td><td>Device</td><td class="commit">feat(ui): add TARS95 device shell</td></tr>
+            <tr data-phase="2" data-state="done"><td class="id">UI-013</td><td><span class="status">Done</span></td><td class="task"><b>Build the boot/self-test sequence</b><small>Short deterministic startup shows subsystem checks and hands off cleanly to the shell.</small></td><td>Device</td><td class="commit">feat(ui): add TARS95 boot sequence</td></tr>
+            <tr data-phase="2" data-state="next"><td class="id">UI-014</td><td><span class="status">Next</span></td><td class="task"><b>Build desktop shell, taskbar, and launcher</b><small>Touch targets work at both device sizes; active app and machine state stay visible.</small></td><td>Device</td><td class="commit">feat(ui): add TARS95 device shell</td></tr>
             <tr data-phase="2" data-state="planned"><td class="id">UI-015</td><td><span class="status">Planned</span></td><td class="task"><b>Restyle the command console</b><small>User/TARS/system messages, scroll, status, and activity affordances remain legible at 320 px logical width.</small></td><td>Device</td><td class="commit">feat(ui): restyle command console</td></tr>
             <tr data-phase="2" data-state="planned"><td class="id">UI-016</td><td><span class="status">Planned</span></td><td class="task"><b>Frame eyes and avatar as OS applications</b><small>Expressive visuals retain full area while title/status chrome makes them part of the same system.</small></td><td>Device</td><td class="commit">feat(ui): integrate character display windows</td></tr>
             <tr data-phase="2" data-state="planned"><td class="id">UI-017</td><td><span class="status">Planned</span></td><td class="task"><b>Rebuild systems monitor</b><small>Battery, CPU, network, audio, and memory are scannable; unavailable sensors read N/A, never fake healthy.</small></td><td>Device</td><td class="commit">feat(ui): rebuild systems monitor</td></tr>
@@ -497,6 +497,7 @@
             <div>UI-010</div><div>Ten original 16-unit pygame glyphs render cleanly at 16 and 24 pixels; five matching local SVG masks replace the primary web navigation icons only under the TARS/95 theme, preserving fallbacks elsewhere.</div><div>READY</div>
             <div>UI-011</div><div>One safety-first resolver maps eight machine states to fixed labels, colors, shapes, cues, and motion rules across all five device surfaces; the web fixture rail applies the same priority and 16 smoke tests pass.</div><div>READY</div>
             <div>UI-012</div><div>The exact 480×320 shell proof keeps Eyes dominant, exposes MENU / APPS in the status rail, shows the real LISTENING and MIC LIVE condition, records its capture fixture and hash, and passes exact-size visual inspection.</div><div>READY</div>
+            <div>UI-013</div><div>A 2.64-second stepped power-on self-test reports display and UI readiness while leaving hardware I/O explicitly deferred and motion output locked; the system-only surface blocks back navigation and hands off deterministically to Eyes at both target sizes.</div><div>READY</div>
           </div>
           <div class="callout">Update the status row and ledger in the same commit as the work it records. The dashboard is the project record, not a second implementation stream.</div>
         </div>

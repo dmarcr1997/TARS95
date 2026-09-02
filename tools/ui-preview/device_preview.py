@@ -29,6 +29,7 @@ PHYSICAL_SIZES = {
 }
 
 APP_SPECS = {
+    "boot": ("modules.UI.apps.module_app_boot", "BootApp"),
     "clock": ("modules.UI.apps.module_app_clock", "ClockApp"),
     "eyes": ("modules.UI.apps.module_app_eyes", "EyesApp"),
     "avatar": ("modules.UI.apps.module_app_avatar", "AvatarApp"),
@@ -333,7 +334,7 @@ def main() -> int:
         f"connectivity={preview_state.snapshot().connectivity}"
     )
     if args.frames is None:
-        print("ESC quits; LEFT/RIGHT or 1-5 switches apps; S/B/A/C cycles preview state.")
+        print(f"ESC quits; LEFT/RIGHT or 1-{len(app_names)} switches apps; S/B/A/C cycles preview state.")
 
     try:
         while running:
@@ -354,7 +355,7 @@ def main() -> int:
                         pygame.display.set_caption(
                             f"TARS/95 preview — {app_names[app_index]} — {args.size}"
                         )
-                    elif pygame.K_1 <= event.key <= pygame.K_5:
+                    elif pygame.K_1 <= event.key < pygame.K_1 + len(app_names):
                         app_index = event.key - pygame.K_1
                         app.cleanup()
                         app = load_app(
@@ -389,6 +390,14 @@ def main() -> int:
             if control_panel:
                 control_panel.draw(display)
             pygame.display.flip()
+
+            if app_names[app_index] == "boot" and getattr(app, "complete", False):
+                app.cleanup()
+                app_index = app_names.index("eyes")
+                app = load_app("eyes", logical_surface, logical_width, logical_height)
+                pygame.display.set_caption(
+                    f"TARS/95 preview — eyes — {args.size} // BOOT HANDOFF"
+                )
 
             frame_count += 1
             if args.frames is not None and frame_count >= args.frames:
