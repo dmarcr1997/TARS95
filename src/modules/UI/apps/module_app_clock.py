@@ -111,6 +111,7 @@ class ClockApp:
         draw_status_bar(
             self.screen,
             (
+                ("HOME", "EYES", CHROME_FACE),
                 ("SRC", "LOCAL", PHOSPHOR_CYAN),
                 ("ZONE", now.strftime("%Z") or "LOCAL", PAPER_TEXT),
                 ("LINK", self._connectivity, link_color),

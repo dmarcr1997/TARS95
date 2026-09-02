@@ -320,6 +320,7 @@ class AvatarApp:
         draw_status_bar(
             self.screen,
             (
+                ("HOME", "EYES", CHROME_FACE),
                 ("VOICE", "LIVE" if self._is_talking else "IDLE", PHOSPHOR_CYAN if self._is_talking else OFFLINE_GRAY),
                 ("EMO", self._emotion.upper(), PAPER_TEXT),
                 ("LINK", self._connectivity, link_color),

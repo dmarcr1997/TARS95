@@ -741,7 +741,12 @@ class UIManager(threading.Thread):
                             if self.show_app and self.app_manager and self.app_manager.is_system_app_active():
                                 continue
                             if self.show_app:
-                                self.exit_app()
+                                if self.app_manager.launcher_open:
+                                    self.app_manager.close_launcher()
+                                elif self.app_manager.current_app_name != "eyes":
+                                    self.launch_app("eyes")
+                                else:
+                                    self.app_manager.open_launcher()
                             else:
                                 self.running = False
                         elif not self.show_app:
@@ -763,12 +768,11 @@ class UIManager(threading.Thread):
                         if self.show_app:
                             logical_pos = self._transform_mouse_pos(event.pos, display_width, display_height)
                             # Forward touch to active app
+                            app_handled = False
                             if self.app_manager and self.app_manager.is_active():
                                 app_event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=logical_pos, button=event.button)
-                                self.app_manager.handle_event(app_event)
-                            if self.terminal_system and not (
-                                self.app_manager and self.app_manager.is_system_app_active()
-                            ):
+                                app_handled = self.app_manager.handle_event(app_event)
+                            if self.terminal_system and not app_handled and self.app_manager.current_app_type == "opengl":
                                 self.terminal_system.handle_app_click(logical_pos)
                         else:
                             if self.screensaver_manager:
@@ -854,7 +858,7 @@ class UIManager(threading.Thread):
                     needs_flip = self.app_manager.render()
 
                     if needs_flip:
-                        if self.terminal_system and not self.app_manager.is_system_app_active():
+                        if self.terminal_system and self.app_manager.current_app_type == "opengl" and not self.app_manager.launcher_open:
                             self.terminal_system.draw_back_button(original_surface)
 
                         if self.effective_rotate != 0:
@@ -864,7 +868,7 @@ class UIManager(threading.Thread):
                             self._render_surface_to_opengl(original_surface, texture_id)
                         pygame.display.flip()
                     else:
-                        if self.terminal_system and not self.app_manager.is_system_app_active():
+                        if self.terminal_system and self.app_manager.current_app_type == "opengl" and not self.app_manager.launcher_open:
                             self._draw_gl_back_button()
                         pygame.display.flip()
 

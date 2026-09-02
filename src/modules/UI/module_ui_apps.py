@@ -30,6 +30,8 @@ except ImportError:
 from modules.UI.apps.module_app_clock import ClockApp
 from modules.UI.apps.module_app_audio_timeline import AudioTimelineApp
 from modules.UI.apps.module_app_boot import BootApp
+from modules.UI.module_ui_shell import Tars95Shell
+from modules.UI.module_ui_state import resolve_presentation
 
 try:
     from modules.UI.apps.module_app_eyes import EyesApp
@@ -86,6 +88,8 @@ class AppManager:
         self.current_app_type = None
         self.failed_apps = set()
         self.boot_target = "eyes"
+        self.launcher_open = False
+        self.shell = Tars95Shell(width, height)
 
         self.gl_mode_active = False
         try:
@@ -115,7 +119,29 @@ class AppManager:
             return False
         return AVAILABLE_APPS.get(self.current_app_name, {}).get("system", False)
 
+    def open_launcher(self):
+        if not self.is_system_app_active():
+            self.launcher_open = True
+
+    def close_launcher(self):
+        self.launcher_open = False
+
+    def toggle_launcher(self):
+        if self.launcher_open:
+            self.close_launcher()
+        else:
+            self.open_launcher()
+
+    def _presentation(self):
+        app = self.current_app
+        return resolve_presentation(
+            getattr(app, "_machine_state", "standby"),
+            getattr(app, "_alert", "none"),
+            getattr(app, "_connectivity", "online"),
+        )
+
     def launch(self, app_name):
+        self.launcher_open = False
         if self.current_app and hasattr(self.current_app, 'cleanup'):
             self.current_app.cleanup()
             self.current_app = None
@@ -130,6 +156,7 @@ class AppManager:
         return False
 
     def deactivate(self):
+        self.launcher_open = False
         self.active = False
         if self.current_app:
             if hasattr(self.current_app, 'cleanup'):
@@ -143,6 +170,29 @@ class AppManager:
 
     def handle_event(self, event):
         """Forward an event to the active app if it supports it."""
+        if not self.active or not self.current_app:
+            return False
+        if self.is_system_app_active():
+            return True
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            physical_position = self.shell.logical_to_physical(event.pos)
+            if self.launcher_open:
+                action = self.shell.launcher_action(physical_position)
+                if action:
+                    command, app_name = action
+                    if command == "launch" and app_name:
+                        self.launch(app_name)
+                    elif command == "close":
+                        self.close_launcher()
+                return True
+            if self.shell.is_taskbar_trigger(physical_position):
+                if self.current_app_name == "eyes":
+                    self.open_launcher()
+                else:
+                    self.launch("eyes")
+                return True
+        if self.launcher_open:
+            return True
         if self.active and self.current_app and hasattr(self.current_app, 'handle_event'):
             return self.current_app.handle_event(event)
         return False
@@ -161,12 +211,24 @@ class AppManager:
                     self.current_app.render()
                 finally:
                     pygame.display.flip = original_flip
+                if self.launcher_open:
+                    shell_surface = self._ensure_offscreen_surface()
+                    self.shell.render_launcher(
+                        shell_surface, self.current_app_name, self._presentation(),
+                    )
+                    self._render_surface_to_gl(shell_surface)
                 return False
             else:
                 self.current_app.render()
 
                 if self.current_app_name == "boot" and getattr(self.current_app, "complete", False):
                     self.launch(self.boot_target)
+
+                if self.launcher_open:
+                    shell_surface = self.offscreen_surface if self.gl_mode_active and HAS_OPENGL else self.screen
+                    self.shell.render_launcher(
+                        shell_surface, self.current_app_name, self._presentation(),
+                    )
 
                 if self.gl_mode_active and HAS_OPENGL:
                     self.screen.blit(self.offscreen_surface, (0, 0))

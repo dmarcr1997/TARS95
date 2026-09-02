@@ -465,6 +465,7 @@ class AudioTimelineApp:
         draw_status_bar(
             self.screen,
             (
+                ("HOME", "EYES", CHROME_HIGHLIGHT),
                 ("MIC", mic_value, PHOSPHOR_CYAN if self._running else OFFLINE_GRAY),
                 ("RMS", rms_value, SPEECH if self._running else OFFLINE_GRAY),
                 ("LINK", self._connectivity, link_color),

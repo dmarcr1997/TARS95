@@ -70,6 +70,11 @@ def parse_args() -> argparse.Namespace:
         help="Save the desktop harness, including preview controls, as a PNG.",
     )
     parser.add_argument(
+        "--launcher",
+        action="store_true",
+        help="Open the TARS/95 touch launcher immediately for design review.",
+    )
+    parser.add_argument(
         "--list",
         action="store_true",
         help="List available app names and exit.",
@@ -200,7 +205,7 @@ class PreviewControlPanel:
         y = self._draw_choices(surface, "CONNECTIVITY  [C]", "connectivity", CONNECTIVITY_STATES, y)
 
         help_lines = ("KEYS: S STATE / B BAT / A ALERT / C LINK",) if self.compact else (
-            "LEFT/RIGHT  APP", "1–5         SELECT", "R           RELOAD", "ESC         EXIT",
+            "LEFT/RIGHT  APP", "1–6         SELECT", "R           RELOAD", "ESC         EXIT",
         )
         help_y = y + 2 if self.compact else max(y + 5, height - 62)
         for line in help_lines:
@@ -297,6 +302,8 @@ def main() -> int:
     install_preview_stubs(preview_state)
 
     import pygame
+    from modules.UI.module_ui_shell import Tars95Shell
+    from modules.UI.module_ui_state import resolve_presentation
 
     physical_width, physical_height = PHYSICAL_SIZES[args.size]
     logical_width, logical_height = physical_height, physical_width
@@ -318,6 +325,8 @@ def main() -> int:
     app_names = list(APP_SPECS)
     app_index = app_names.index(args.app)
     app = load_app(args.app, logical_surface, logical_width, logical_height)
+    shell = Tars95Shell(logical_width, logical_height)
+    launcher_open = args.launcher and args.app != "boot"
     clock = pygame.time.Clock()
     frame_count = 0
     running = True
@@ -343,7 +352,10 @@ def main() -> int:
                     running = False
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
-                        running = False
+                        if launcher_open:
+                            launcher_open = False
+                        else:
+                            running = False
                     elif event.key in (pygame.K_LEFT, pygame.K_RIGHT):
                         step = -1 if event.key == pygame.K_LEFT else 1
                         app_index = (app_index + step) % len(app_names)
@@ -352,6 +364,7 @@ def main() -> int:
                             app_names[app_index], logical_surface,
                             logical_width, logical_height,
                         )
+                        launcher_open = False
                         pygame.display.set_caption(
                             f"TARS/95 preview — {app_names[app_index]} — {args.size}"
                         )
@@ -362,6 +375,7 @@ def main() -> int:
                             app_names[app_index], logical_surface,
                             logical_width, logical_height,
                         )
+                        launcher_open = False
                     elif event.key == pygame.K_r:
                         app.cleanup()
                         app = load_app(
@@ -378,12 +392,47 @@ def main() -> int:
                     elif event.key == pygame.K_c:
                         preview_state.cycle("connectivity", CONNECTIVITY_STATES)
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    if control_panel:
+                    if control_panel and event.pos[0] >= physical_width:
                         control_panel.handle_click(event.pos)
+                    elif launcher_open:
+                        action = shell.launcher_action(event.pos)
+                        if action:
+                            command, app_name = action
+                            if command == "launch" and app_name in app_names:
+                                app.cleanup()
+                                app_index = app_names.index(app_name)
+                                app = load_app(
+                                    app_name, logical_surface, logical_width, logical_height,
+                                )
+                                launcher_open = False
+                            elif command == "close":
+                                launcher_open = False
+                    elif shell.is_taskbar_trigger(event.pos):
+                        if app_names[app_index] == "eyes":
+                            launcher_open = True
+                        elif app_names[app_index] != "boot":
+                            app.cleanup()
+                            app_index = app_names.index("eyes")
+                            app = load_app(
+                                "eyes", logical_surface, logical_width, logical_height,
+                            )
+                    elif hasattr(app, "handle_event"):
+                        logical_pos = shell.physical_to_logical(event.pos)
+                        app.handle_event(pygame.event.Event(
+                            pygame.MOUSEBUTTONDOWN, pos=logical_pos, button=event.button,
+                        ))
 
             apply_state_to_app(app_names[app_index], app, preview_state)
             app.update()
             app.render()
+            if launcher_open:
+                snapshot = preview_state.snapshot()
+                presentation = resolve_presentation(
+                    snapshot.machine_state, snapshot.alert, snapshot.connectivity,
+                )
+                shell.render_launcher(
+                    logical_surface, app_names[app_index], presentation,
+                )
             physical_frame = pygame.transform.rotate(logical_surface, 270)
             display.fill((4, 8, 9))
             display.blit(physical_frame, (0, 0))
@@ -395,6 +444,7 @@ def main() -> int:
                 app.cleanup()
                 app_index = app_names.index("eyes")
                 app = load_app("eyes", logical_surface, logical_width, logical_height)
+                launcher_open = False
                 pygame.display.set_caption(
                     f"TARS/95 preview — eyes — {args.size} // BOOT HANDOFF"
                 )

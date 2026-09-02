@@ -301,6 +301,7 @@ class RemoteApp:
         draw_status_bar(
             self.screen,
             (
+                ("HOME", "EYES", CHROME_FACE),
                 ("WIFI", self._connectivity, link_color),
                 ("TUN", tunnel_value, READY_GREEN if tunnel_value == "LIVE" else OFFLINE_GRAY),
                 ("SYS", presentation.label, presentation.color),

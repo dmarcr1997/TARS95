@@ -172,6 +172,72 @@ class WebContractTests(unittest.TestCase):
 
 
 class DeviceRenderTests(unittest.TestCase):
+    def test_shell_launcher_routes_touch_and_home(self) -> None:
+        code = """
+import os
+import sys
+from pathlib import Path
+
+os.environ['SDL_VIDEODRIVER'] = 'dummy'
+os.environ['SDL_AUDIODRIVER'] = 'dummy'
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+root = Path(r'{root}')
+sys.path.insert(0, str(root / 'tools' / 'ui-preview'))
+sys.path.insert(0, str(root / 'src'))
+sys.path.insert(0, str(root / 'src' / 'modules'))
+
+from preview_state import PreviewStateStore
+from device_preview import install_preview_stubs
+install_preview_stubs(PreviewStateStore())
+
+import pygame
+pygame.display.init()
+pygame.font.init()
+pygame.display.set_mode((480, 320))
+
+from modules.UI.module_ui_apps import AppManager
+from modules.UI.module_ui_shell import Tars95Shell
+from modules.UI.module_ui_state import STATE_PRESENTATIONS
+
+surface = pygame.Surface((320, 480))
+manager = AppManager(surface, 320, 480, display_width=480, display_height=320, rotation=270)
+assert manager.launch('eyes')
+
+menu_physical = (40, 307)
+menu_logical = manager.shell.physical_to_logical(menu_physical)
+assert manager.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=menu_logical, button=1))
+assert manager.launcher_open
+assert manager.render()
+assert len(manager.shell.touch_targets) == 5
+for rect, _name in manager.shell.touch_targets:
+    assert rect.width >= 48 and rect.height >= 48
+
+clock_rect = next(rect for rect, name in manager.shell.touch_targets if name == 'clock')
+clock_logical = manager.shell.physical_to_logical(clock_rect.center)
+assert manager.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=clock_logical, button=1))
+assert manager.current_app_name == 'clock'
+assert not manager.launcher_open
+
+home_logical = manager.shell.physical_to_logical(menu_physical)
+assert manager.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=home_logical, button=1))
+assert manager.current_app_name == 'eyes'
+
+large_surface = pygame.Surface((480, 800))
+large_shell = Tars95Shell(480, 800)
+large_shell.render_launcher(large_surface, 'eyes', STATE_PRESENTATIONS['LISTENING'])
+assert len(large_shell.touch_targets) == 5
+for rect, _name in large_shell.touch_targets:
+    assert rect.width >= 80 and rect.height >= 80
+
+manager.deactivate()
+pygame.quit()
+""".format(root=str(REPO_ROOT))
+        result = subprocess.run(
+            [sys.executable, "-c", code], cwd=REPO_ROOT,
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
     def test_boot_sequence_is_deterministic_and_hands_off_to_eyes(self) -> None:
         code = """
 import os
