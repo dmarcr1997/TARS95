@@ -30,6 +30,7 @@ PHYSICAL_SIZES = {
 
 APP_SPECS = {
     "boot": ("modules.UI.apps.module_app_boot", "BootApp"),
+    "terminal": ("modules.UI.apps.module_app_terminal", "TerminalPreviewApp"),
     "clock": ("modules.UI.apps.module_app_clock", "ClockApp"),
     "eyes": ("modules.UI.apps.module_app_eyes", "EyesApp"),
     "avatar": ("modules.UI.apps.module_app_avatar", "AvatarApp"),
@@ -205,7 +206,7 @@ class PreviewControlPanel:
         y = self._draw_choices(surface, "CONNECTIVITY  [C]", "connectivity", CONNECTIVITY_STATES, y)
 
         help_lines = ("KEYS: S STATE / B BAT / A ALERT / C LINK",) if self.compact else (
-            "LEFT/RIGHT  APP", "1–6         SELECT", "R           RELOAD", "ESC         EXIT",
+            "LEFT/RIGHT  APP", "1–7         SELECT", "R           RELOAD", "ESC         EXIT",
         )
         help_y = y + 2 if self.compact else max(y + 5, height - 62)
         for line in help_lines:

@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import List, Tuple, Callable, Optional
 
 from modules.module_config import load_config
+from modules.UI.module_ui_terminal_tars95 import Tars95TerminalRenderer
 
 CONFIG = load_config()
 
@@ -120,6 +121,7 @@ class TerminalSystem:
 
         self.log_dir = Path(__file__).resolve().parent.parent.parent / "memory"
         char_name = CONFIG['CHAR']['character_name']
+        self.character_name = char_name
         self.log_file = self.log_dir / f"terminal_log_{char_name}.json"
         self.max_log_messages = 100
 
@@ -158,6 +160,8 @@ class TerminalSystem:
         self.status_blink = 0
 
         self.tars_status = "BOOTING"
+        self._alert = "NONE"
+        self._connectivity = "ONLINE"
 
         self.show_power_menu = False
         self.power_menu_buttons = []
@@ -179,6 +183,7 @@ class TerminalSystem:
         self._wifi_icon_gray   = self._load_wifi_icon(os.path.join(_icon_dir, "wifi-gray.png"))
 
         self.overlay_surface = pygame.Surface((width, height), pygame.SRCALPHA)
+        self._tars95_renderer = Tars95TerminalRenderer(self, width, height)
 
     def _ensure_log_dir(self):
         self.log_dir.mkdir(parents=True, exist_ok=True)
@@ -679,6 +684,9 @@ class TerminalSystem:
             surface.blit(text_surface, text_rect)
 
     def handle_click(self, pos: Tuple[int, int]):
+        if self._tars95_renderer.handle_click(pos):
+            return
+
         if self.scroll_up_rect and self.scroll_up_rect.collidepoint(pos):
             self.scroll_up(2)
             return
@@ -1151,6 +1159,9 @@ class TerminalSystem:
             surface.blit(text_surface, text_rect)
 
     def draw(self, surface):
+        self._tars95_renderer.draw(surface)
+        return
+
         self._update_wrapped_cache()
 
         self.overlay_surface.fill((0, 0, 0, 0))
