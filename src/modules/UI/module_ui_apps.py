@@ -73,7 +73,7 @@ def _class_accepts_param(cls, param_name):
 
 
 class AppManager:
-    def __init__(self, screen, width, height, display_width=None, display_height=None, rotation=0):
+    def __init__(self, screen, width, height, display_width=None, display_height=None, rotation=0, on_terminal=None):
         self.screen = screen
         self.width = width
         self.height = height
@@ -90,6 +90,7 @@ class AppManager:
         self.boot_target = "eyes"
         self.launcher_open = False
         self.shell = Tars95Shell(width, height)
+        self.on_terminal = on_terminal
 
         self.gl_mode_active = False
         try:
@@ -181,7 +182,11 @@ class AppManager:
                 if action:
                     command, app_name = action
                     if command == "launch" and app_name:
-                        self.launch(app_name)
+                        if app_name == "terminal" and self.on_terminal:
+                            self.close_launcher()
+                            self.on_terminal()
+                        elif app_name != "terminal":
+                            self.launch(app_name)
                     elif command == "close":
                         self.close_launcher()
                 return True

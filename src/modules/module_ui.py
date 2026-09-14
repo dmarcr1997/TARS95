@@ -680,7 +680,8 @@ class UIManager(threading.Thread):
                     self.logical_height,
                     display_width=display_width,
                     display_height=display_height,
-                    rotation=self.effective_rotate
+                    rotation=self.effective_rotate,
+                    on_terminal=self.exit_app,
                 )
 
                 if self.terminal_system and self.app_manager:

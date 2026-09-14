@@ -44,6 +44,7 @@ SHELL_APPS = (
     ShellApp("audio", "AUDIO", "SIGNAL DIAGNOSTICS", "audio"),
     ShellApp("avatar", "AVATAR", "IDENTITY FRAME", "avatar"),
     ShellApp("remote", "REMOTE", "LINK SERVICE", "remote"),
+    ShellApp("terminal", "CONSOLE", "COMMAND CHANNEL", "chat"),
 )
 
 

@@ -200,7 +200,11 @@ from modules.UI.module_ui_shell import Tars95Shell
 from modules.UI.module_ui_state import STATE_PRESENTATIONS
 
 surface = pygame.Surface((320, 480))
-manager = AppManager(surface, 320, 480, display_width=480, display_height=320, rotation=270)
+terminal_calls = []
+manager = AppManager(
+    surface, 320, 480, display_width=480, display_height=320, rotation=270,
+    on_terminal=lambda: terminal_calls.append('terminal'),
+)
 assert manager.launch('eyes')
 
 menu_physical = (40, 307)
@@ -208,7 +212,7 @@ menu_logical = manager.shell.physical_to_logical(menu_physical)
 assert manager.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=menu_logical, button=1))
 assert manager.launcher_open
 assert manager.render()
-assert len(manager.shell.touch_targets) == 5
+assert len(manager.shell.touch_targets) == 6
 for rect, _name in manager.shell.touch_targets:
     assert rect.width >= 48 and rect.height >= 48
 
@@ -222,14 +226,81 @@ home_logical = manager.shell.physical_to_logical(menu_physical)
 assert manager.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=home_logical, button=1))
 assert manager.current_app_name == 'eyes'
 
+assert manager.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=menu_logical, button=1))
+assert manager.render()
+terminal_rect = next(rect for rect, name in manager.shell.touch_targets if name == 'terminal')
+terminal_logical = manager.shell.physical_to_logical(terminal_rect.center)
+assert manager.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=terminal_logical, button=1))
+assert terminal_calls == ['terminal']
+assert not manager.launcher_open
+
 large_surface = pygame.Surface((480, 800))
 large_shell = Tars95Shell(480, 800)
 large_shell.render_launcher(large_surface, 'eyes', STATE_PRESENTATIONS['LISTENING'])
-assert len(large_shell.touch_targets) == 5
+assert len(large_shell.touch_targets) == 6
 for rect, _name in large_shell.touch_targets:
     assert rect.width >= 80 and rect.height >= 80
 
 manager.deactivate()
+pygame.quit()
+""".format(root=str(REPO_ROOT))
+        result = subprocess.run(
+            [sys.executable, "-c", code], cwd=REPO_ROOT,
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_command_console_controls_and_state_render(self) -> None:
+        code = """
+import os
+import sys
+from pathlib import Path
+
+os.environ['SDL_VIDEODRIVER'] = 'dummy'
+os.environ['SDL_AUDIODRIVER'] = 'dummy'
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+root = Path(r'{root}')
+sys.path.insert(0, str(root / 'tools' / 'ui-preview'))
+sys.path.insert(0, str(root / 'src'))
+
+from preview_state import PreviewState, PreviewStateStore
+from device_preview import install_preview_stubs
+install_preview_stubs(PreviewStateStore())
+
+import pygame
+pygame.display.init()
+pygame.font.init()
+pygame.display.set_mode((480, 320))
+
+from modules.UI.apps.module_app_terminal import TerminalPreviewApp
+
+surface = pygame.Surface((320, 480))
+app = TerminalPreviewApp(surface, 320, 480)
+app.set_preview_state(PreviewState(
+    machine_state='thinking', battery=78, alert='none', connectivity='degraded',
+))
+app.update()
+app.render()
+renderer = app.terminal._tars95_renderer
+assert renderer.frame.get_size() == (480, 320)
+assert len(app.terminal.messages) == 3
+
+menu_logical = (307, 439)
+assert app.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=menu_logical, button=1))
+assert app.terminal.show_main_menu
+app.render()
+assert len(renderer.menu_targets) == 6
+
+apps_rect = next(rect for rect, action in renderer.menu_targets if action == 'apps')
+apps_logical = (apps_rect.centery, 479 - apps_rect.centerx)
+assert app.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=apps_logical, button=1))
+assert app.terminal.show_app_menu
+
+app.terminal.show_app_menu = False
+app.terminal.scroll_offset = 0
+up_logical = (renderer.scroll_up_rect.centery, 479 - renderer.scroll_up_rect.centerx)
+assert app.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=up_logical, button=1))
+assert app.terminal.scroll_offset > 0
 pygame.quit()
 """.format(root=str(REPO_ROOT))
         result = subprocess.run(
