@@ -118,6 +118,76 @@ def draw_grid(
     surface.set_clip(previous_clip)
 
 
+def character_viewport_rect(
+    surface: pygame.Surface,
+    *,
+    title_height: int,
+    status_height: int,
+) -> pygame.Rect:
+    """Reserve a shared full-area viewport between application chrome rails."""
+    inset = scaled(10, scale_for(surface))
+    return pygame.Rect(
+        inset,
+        title_height + inset,
+        surface.get_width() - inset * 2,
+        surface.get_height() - title_height - status_height - inset * 2,
+    )
+
+
+def draw_character_viewport(
+    surface: pygame.Surface,
+    rect: pygame.Rect,
+    label: str,
+    app_id: str,
+    *,
+    signal_color: tuple[int, int, int],
+) -> pygame.Rect:
+    """Frame expressive character content with flat optical crop marks."""
+    scale = scale_for(surface)
+    line_width = scaled(1, scale)
+    corner = scaled(13, scale)
+    tick = scaled(5, scale)
+
+    pygame.draw.rect(surface, PANEL_LINE, rect, line_width)
+
+    # Long corner crops keep the viewport legible without boxing in the art.
+    for x, x_end in ((rect.left, rect.left + corner), (rect.right - corner, rect.right)):
+        draw_rule(surface, (x, rect.top), (x_end, rect.top), CHROME_FACE, width=line_width)
+        draw_rule(surface, (x, rect.bottom - 1), (x_end, rect.bottom - 1), CHROME_FACE, width=line_width)
+    for y, y_end in ((rect.top, rect.top + corner), (rect.bottom - corner, rect.bottom)):
+        draw_rule(surface, (rect.left, y), (rect.left, y_end), CHROME_FACE, width=line_width)
+        draw_rule(surface, (rect.right - 1, y), (rect.right - 1, y_end), CHROME_FACE, width=line_width)
+
+    # A state-colored registration rail is the only accent inside the frame.
+    rail_top = rect.top + scaled(18, scale)
+    rail_bottom = rail_top + scaled(22, scale)
+    draw_rule(
+        surface,
+        (rect.left + scaled(3, scale), rail_top),
+        (rect.left + scaled(3, scale), rail_bottom),
+        signal_color,
+        width=scaled(2, scale),
+    )
+
+    draw_label(
+        surface,
+        label,
+        (rect.left + scaled(9, scale), rect.top + scaled(7, scale)),
+        size=scaled(8, scale),
+        color=CHROME_FACE,
+    )
+    id_image = load_font(scaled(7, scale), "mono").render(app_id, True, PANEL_MUTED)
+    surface.blit(
+        id_image,
+        id_image.get_rect(topright=(rect.right - scaled(8, scale), rect.top + scaled(7, scale))),
+    )
+
+    center_y = rect.centery
+    draw_rule(surface, (rect.left, center_y), (rect.left + tick, center_y), PANEL_MUTED)
+    draw_rule(surface, (rect.right - tick, center_y), (rect.right - 1, center_y), PANEL_MUTED)
+    return rect
+
+
 def draw_panel(
     surface: pygame.Surface,
     rect: pygame.Rect,

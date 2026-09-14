@@ -17,13 +17,11 @@ from modules.UI.module_ui_tars95 import (
     CAUTION_AMBER,
     CHROME_FACE,
     OFFLINE_GRAY,
-    PANEL_LINE,
     PHOSPHOR_CYAN,
     READY_GREEN,
     draw_grid,
-    draw_hazard_marks,
-    draw_label,
-    draw_rule,
+    character_viewport_rect,
+    draw_character_viewport,
     draw_status_bar,
     draw_title_bar,
     scale_for,
@@ -177,12 +175,23 @@ class EyesApp:
         )
         draw_grid(frame, content_rect, step=scaled(32, scale))
 
-        # Eyes are the content, not decoration: keep the central field open.
-        self.eyes.draw(frame)
-
         presentation = resolve_presentation(
             self._machine_state, self._alert, self._connectivity,
         )
+
+        # Eyes are the content, not decoration: keep the central field open.
+        self.eyes.draw(frame)
+        viewport = character_viewport_rect(
+            frame, title_height=title_height, status_height=status_height,
+        )
+        draw_character_viewport(
+            frame,
+            viewport,
+            "PRESENCE // OPTICAL ARRAY",
+            "APP 01 / LIVE",
+            signal_color=presentation.color,
+        )
+
         draw_title_bar(
             frame,
             "TARS/95",
@@ -191,24 +200,6 @@ class EyesApp:
             height=title_height,
             state_color=presentation.color,
             icon="eyes",
-        )
-
-        index_y = title_height + scaled(10, scale)
-        draw_hazard_marks(
-            frame,
-            pygame.Rect(scaled(10, scale), index_y, scaled(28, scale), scaled(3, scale)),
-            segment=scaled(4, scale),
-        )
-        draw_label(
-            frame, "OPTICAL EXPRESSION ARRAY",
-            (scaled(44, scale), index_y - scaled(2, scale)),
-            size=scaled(8, scale), color=CAUTION_AMBER,
-        )
-        draw_rule(
-            frame,
-            (scaled(10, scale), frame.get_height() - status_height - scaled(10, scale)),
-            (scaled(46, scale), frame.get_height() - status_height - scaled(10, scale)),
-            PANEL_LINE,
         )
 
         battery = "N/A" if self._battery is None else f"{int(self._battery):03d}%"

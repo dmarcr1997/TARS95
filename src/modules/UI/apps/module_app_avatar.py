@@ -20,7 +20,8 @@ from modules.UI.module_ui_tars95 import (
     PHOSPHOR_CYAN,
     READY_GREEN,
     draw_grid,
-    draw_hazard_marks,
+    character_viewport_rect,
+    draw_character_viewport,
     draw_label,
     draw_status_bar,
     draw_title_bar,
@@ -259,6 +260,8 @@ class AvatarApp:
         self._battery = snapshot.battery
         self._alert = str(snapshot.alert).upper()
         self._connectivity = str(snapshot.connectivity).upper()
+        self._is_talking = self._machine_state == "TALKING"
+        self._update_frame()
 
     def handle_event(self, event: pygame.event.Event) -> bool:
         return False
@@ -273,6 +276,10 @@ class AvatarApp:
             pygame.Rect(0, title_h, self.width, self.height - title_h - status_h),
             step=scaled(32, ui_scale),
         )
+        presentation = resolve_presentation(
+            self._machine_state, self._alert, self._connectivity,
+        )
+
         if self._current_surf is not None and self._render_rect is not None:
             self.screen.blit(self._current_surf, self._render_rect)
         else:
@@ -282,22 +289,17 @@ class AvatarApp:
                 size=scaled(10, ui_scale), color=OFFLINE_GRAY,
             )
 
-        draw_hazard_marks(
+        viewport = character_viewport_rect(
             self.screen,
-            pygame.Rect(
-                scaled(10, ui_scale), title_h + scaled(10, ui_scale),
-                scaled(28, ui_scale), scaled(3, ui_scale),
-            ),
-            segment=scaled(4, ui_scale),
+            title_height=title_h,
+            status_height=status_h,
         )
-        draw_label(
-            self.screen, f"CHARACTER // {self._char_name.upper()}",
-            (scaled(44, ui_scale), title_h + scaled(8, ui_scale)),
-            size=scaled(8, ui_scale), color=CAUTION_AMBER,
-        )
-
-        presentation = resolve_presentation(
-            self._machine_state, self._alert, self._connectivity,
+        draw_character_viewport(
+            self.screen,
+            viewport,
+            f"IDENTITY // {self._char_name.upper()}",
+            "APP 04 / LIVE",
+            signal_color=presentation.color,
         )
         draw_title_bar(
             self.screen, "TARS/95", "IDENTITY // AVATAR", presentation.label,

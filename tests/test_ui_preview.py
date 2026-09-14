@@ -452,6 +452,27 @@ pygame.quit()
                         self.assertGreater(green, 150)
                         self.assertGreater(blue, 140)
 
+    def test_character_apps_share_full_area_os_viewport(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="tars95-character-windows-") as temp_dir:
+            directory = Path(temp_dir)
+            for app_name in ("eyes", "avatar"):
+                with self.subTest(app=app_name):
+                    self._render_case(app_name, "480x320", "talking", directory)
+                    with Image.open(directory / f"{app_name}-480x320.png").convert("RGB") as image:
+                        for position in ((10, 38), (469, 38), (10, 284), (469, 284)):
+                            self.assertEqual((216, 201, 155), image.getpixel(position))
+
+                        # The frame is an edge treatment, not a content panel.
+                        viewport = image.crop((11, 39, 469, 284))
+                        colors = viewport.getcolors(maxcolors=viewport.width * viewport.height)
+                        self.assertIsNotNone(colors)
+                        dark_pixels = sum(
+                            count for count, pixel in colors or [] if max(pixel) < 80
+                        )
+                        self.assertGreater(dark_pixels, 70000)
+                        if app_name == "avatar":
+                            self.assertEqual((22, 217, 196), image.getpixel((103, 307)))
+
     def test_all_apps_render_at_both_physical_sizes_without_hardware(self) -> None:
         cases = [
             (app_name, size, MACHINE_STATES[index % len(MACHINE_STATES)])
