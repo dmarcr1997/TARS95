@@ -40,7 +40,7 @@ class ShellApp:
 
 SHELL_APPS = (
     ShellApp("eyes", "EYES", "PRESENCE / HOME", "eyes"),
-    ShellApp("clock", "CLOCK", "LOCAL TIME", "clock"),
+    ShellApp("systems", "SYSTEMS", "POWER / HEALTH", "systems"),
     ShellApp("audio", "AUDIO", "SIGNAL DIAGNOSTICS", "audio"),
     ShellApp("avatar", "AVATAR", "IDENTITY FRAME", "avatar"),
     ShellApp("remote", "REMOTE", "LINK SERVICE", "remote"),

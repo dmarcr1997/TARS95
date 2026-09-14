@@ -31,6 +31,7 @@ PHYSICAL_SIZES = {
 APP_SPECS = {
     "boot": ("modules.UI.apps.module_app_boot", "BootApp"),
     "terminal": ("modules.UI.apps.module_app_terminal", "TerminalPreviewApp"),
+    "systems": ("modules.UI.apps.module_app_systems", "SystemsApp"),
     "clock": ("modules.UI.apps.module_app_clock", "ClockApp"),
     "eyes": ("modules.UI.apps.module_app_eyes", "EyesApp"),
     "avatar": ("modules.UI.apps.module_app_avatar", "AvatarApp"),

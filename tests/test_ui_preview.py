@@ -216,10 +216,10 @@ assert len(manager.shell.touch_targets) == 6
 for rect, _name in manager.shell.touch_targets:
     assert rect.width >= 48 and rect.height >= 48
 
-clock_rect = next(rect for rect, name in manager.shell.touch_targets if name == 'clock')
-clock_logical = manager.shell.physical_to_logical(clock_rect.center)
-assert manager.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=clock_logical, button=1))
-assert manager.current_app_name == 'clock'
+systems_rect = next(rect for rect, name in manager.shell.touch_targets if name == 'systems')
+systems_logical = manager.shell.physical_to_logical(systems_rect.center)
+assert manager.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=systems_logical, button=1))
+assert manager.current_app_name == 'systems'
 assert not manager.launcher_open
 
 home_logical = manager.shell.physical_to_logical(menu_physical)
@@ -241,6 +241,85 @@ assert len(large_shell.touch_targets) == 6
 for rect, _name in large_shell.touch_targets:
     assert rect.width >= 80 and rect.height >= 80
 
+manager.deactivate()
+pygame.quit()
+""".format(root=str(REPO_ROOT))
+        result = subprocess.run(
+            [sys.executable, "-c", code], cwd=REPO_ROOT,
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_systems_monitor_uses_truthful_sources_and_preview_fixtures(self) -> None:
+        code = """
+import os
+import sys
+from pathlib import Path
+
+os.environ['SDL_VIDEODRIVER'] = 'dummy'
+os.environ['SDL_AUDIODRIVER'] = 'dummy'
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+root = Path(r'{root}')
+sys.path.insert(0, str(root / 'tools' / 'ui-preview'))
+sys.path.insert(0, str(root / 'src'))
+sys.path.insert(0, str(root / 'src' / 'modules'))
+
+from preview_state import PreviewState, PreviewStateStore
+from device_preview import install_preview_stubs
+install_preview_stubs(PreviewStateStore())
+
+import pygame
+pygame.display.init()
+pygame.font.init()
+pygame.display.set_mode((480, 320))
+
+from modules.UI.apps.module_app_systems import SystemsApp
+from modules.UI.module_ui_apps import AppManager
+
+class Battery:
+    def get_battery_status(self):
+        return {{
+            'sensor_initialized': True,
+            'normalized_percentage': 63,
+            'voltage': 12.4,
+            'current': 480,
+            'charging_state': 'discharging',
+        }}
+
+class Temperature:
+    def get_status(self):
+        return {{'sensor_available': True}}
+    def get_temperature(self):
+        return 51.5
+
+surface = pygame.Surface((320, 480))
+app = SystemsApp(surface, 320, 480)
+app.set_preview_state(PreviewState(
+    machine_state='talking', battery=78, alert='none', connectivity='degraded',
+))
+assert app.telemetry.source == 'PREVIEW FIXTURE'
+assert app.telemetry.battery == 78
+assert app.telemetry.cpu == 34
+assert app.telemetry.temperature_c is None
+assert app.telemetry.audio == 'PLAYING'
+app.render()
+
+live = SystemsApp(surface, 320, 480, battery_module=Battery(), cpu_temp_module=Temperature())
+live.set_connectivity_status('client', 82)
+sample = live._collect_live_sample()
+assert sample.source == 'LIVE'
+assert sample.battery == 63
+assert sample.temperature_c == 51.5
+assert sample.connectivity == 'ONLINE'
+assert sample.signal == 82
+
+manager = AppManager(
+    surface, 320, 480, battery_module=Battery(), cpu_temp_module=Temperature(),
+)
+manager.set_system_connectivity('client', 82)
+assert manager.launch('systems')
+assert manager.current_app.battery_module is not None
+assert manager.current_app._connectivity == 'ONLINE'
 manager.deactivate()
 pygame.quit()
 """.format(root=str(REPO_ROOT))

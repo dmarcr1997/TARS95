@@ -310,6 +310,8 @@ class UIManager(threading.Thread):
                 self._wifi_signal = status.get("signal", 0)
                 if self.terminal_system:
                     self.terminal_system.set_wifi_status(self._wifi_mode, self._wifi_signal)
+                if self.app_manager:
+                    self.app_manager.set_system_connectivity(self._wifi_mode, self._wifi_signal)
             except Exception:
                 pass
             _time.sleep(self._wifi_poll_interval)
@@ -682,6 +684,8 @@ class UIManager(threading.Thread):
                     display_height=display_height,
                     rotation=self.effective_rotate,
                     on_terminal=self.exit_app,
+                    battery_module=self.battery_module,
+                    cpu_temp_module=self.cpu_temp_module,
                 )
 
                 if self.terminal_system and self.app_manager:

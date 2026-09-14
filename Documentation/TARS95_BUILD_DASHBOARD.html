@@ -336,8 +336,8 @@
           <div class="readout-row"><span>BRANCH</span><span>V3</span></div>
           <div class="readout-row"><span>BASELINE</span><span>7593f8c</span></div>
           <div class="readout-row"><span>SURFACES</span><span>PYGAME + WEB</span></div>
-          <div class="readout-row"><span><i class="lamp amber"></i>BUILD STATE</span><span>CHARACTER WINDOWS READY</span></div>
-          <div class="readout-row"><span>NEXT ACTION</span><span>UI-017</span></div>
+          <div class="readout-row"><span><i class="lamp amber"></i>BUILD STATE</span><span>SYSTEMS MONITOR READY</span></div>
+          <div class="readout-row"><span>NEXT ACTION</span><span>UI-018</span></div>
         </aside>
       </div>
       <div class="stats">
@@ -428,8 +428,8 @@
             <tr data-phase="2" data-state="done"><td class="id">UI-014</td><td><span class="status">Done</span></td><td class="task"><b>Build desktop shell, taskbar, and launcher</b><small>Touch targets work at both device sizes; active app and machine state stay visible.</small></td><td>Device</td><td class="commit">feat(ui): add TARS95 device shell</td></tr>
             <tr data-phase="2" data-state="done"><td class="id">UI-015</td><td><span class="status">Done</span></td><td class="task"><b>Restyle the command console</b><small>User/TARS/system messages, scroll, status, and activity affordances remain legible at 320 px logical width.</small></td><td>Device</td><td class="commit">feat(ui): restyle command console</td></tr>
             <tr data-phase="2" data-state="done"><td class="id">UI-016</td><td><span class="status">Done</span></td><td class="task"><b>Frame eyes and avatar as OS applications</b><small>Expressive visuals retain full area while title/status chrome makes them part of the same system.</small></td><td>Device</td><td class="commit">feat(ui): integrate character display windows</td></tr>
-            <tr data-phase="2" data-state="next"><td class="id">UI-017</td><td><span class="status">Next</span></td><td class="task"><b>Rebuild systems monitor</b><small>Battery, CPU, network, audio, and memory are scannable; unavailable sensors read N/A, never fake healthy.</small></td><td>Device</td><td class="commit">feat(ui): rebuild systems monitor</td></tr>
-            <tr data-phase="2" data-state="planned"><td class="id">UI-018</td><td><span class="status">Planned</span></td><td class="task"><b>Rebuild locomotion controls</b><small>Direction, stop, neutral, and servo-disable actions are distinct and require deliberate input.</small></td><td>Device</td><td class="commit">feat(ui): rebuild locomotion controls</td></tr>
+            <tr data-phase="2" data-state="done"><td class="id">UI-017</td><td><span class="status">Done</span></td><td class="task"><b>Rebuild systems monitor</b><small>Battery, CPU, network, audio, and memory are scannable; unavailable sensors read N/A, never fake healthy.</small></td><td>Device</td><td class="commit">feat(ui): rebuild systems monitor</td></tr>
+            <tr data-phase="2" data-state="next"><td class="id">UI-018</td><td><span class="status">Next</span></td><td class="task"><b>Rebuild locomotion controls</b><small>Direction, stop, neutral, and servo-disable actions are distinct and require deliberate input.</small></td><td>Device</td><td class="commit">feat(ui): rebuild locomotion controls</td></tr>
             <tr data-phase="2" data-state="planned"><td class="id">UI-019</td><td><span class="status">Planned</span></td><td class="task"><b>Restyle audio/comms diagnostics</b><small>Wake, speech, TTS, noise, and barge-in signals share the new state language without losing detail.</small></td><td>Device</td><td class="commit">feat(ui): restyle audio diagnostics</td></tr>
             <tr data-phase="2" data-state="planned"><td class="id">UI-020</td><td><span class="status">Planned</span></td><td class="task"><b>Add TARS/95 idle and fault screens</b><small>Idle feels alive at low cost; warnings and faults override decoration with clear next actions.</small></td><td>Device</td><td class="commit">feat(ui): add idle and fault screens</td></tr>
 
@@ -501,6 +501,7 @@
             <div>UI-014</div><div>The shared physical shell turns MENU / APPS into a five-application touch launcher, keeps active app and resolved state visible, provides HOME / EYES on every rebuilt device surface, and uses the same routing in production and desktop preview at both target sizes.</div><div>READY</div>
             <div>UI-015</div><div>The real command console now renders physical-first with flat source-coded message rows, stepped processing activity, truthful link and message status, large scroll controls, compact system/app/power menus, and a sixth Console launcher target; all 20 smoke tests pass.</div><div>READY</div>
             <div>UI-016</div><div>Eyes and Avatar now share one full-area character viewport with restrained crop marks, app identifiers, and a state-colored registration rail; expressive content remains dominant and Avatar preview speech state stays internally consistent.</div><div>READY</div>
+            <div>UI-017</div><div>A dedicated physical-first Systems app replaces Clock in the launcher and presents power, CPU, thermal, memory, storage, network, and audio in one scan; Pi sources are wired through the app manager, preview readings are labeled fixtures, and absent sensors remain N/A.</div><div>READY</div>
           </div>
           <div class="callout">Update the status row and ledger in the same commit as the work it records. The dashboard is the project record, not a second implementation stream.</div>
         </div>
