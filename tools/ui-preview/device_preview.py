@@ -31,6 +31,7 @@ PHYSICAL_SIZES = {
 APP_SPECS = {
     "boot": ("modules.UI.apps.module_app_boot", "BootApp"),
     "terminal": ("modules.UI.apps.module_app_terminal", "TerminalPreviewApp"),
+    "motion": ("modules.UI.apps.module_app_motion", "MotionApp"),
     "systems": ("modules.UI.apps.module_app_systems", "SystemsApp"),
     "clock": ("modules.UI.apps.module_app_clock", "ClockApp"),
     "eyes": ("modules.UI.apps.module_app_eyes", "EyesApp"),
@@ -40,6 +41,21 @@ APP_SPECS = {
 }
 
 HARDWARE_ATTEMPTS: list[str] = []
+
+
+class PreviewMotionBackend:
+    """Record motion intent without importing or touching robot hardware."""
+
+    label = "PREVIEW / NO HARDWARE"
+
+    def __init__(self) -> None:
+        self.commands: list[str] = []
+
+    def run(self, action: str) -> None:
+        self.commands.append(action)
+
+    def emergency_stop(self) -> None:
+        self.commands.append("stop")
 
 
 def parse_args() -> argparse.Namespace:
@@ -162,6 +178,11 @@ def load_app(app_name: str, surface, width: int, height: int):
         module._speak_in_background = _blocked_hardware("audio.play")
 
     app_class = getattr(module, class_name)
+    if app_name == "motion":
+        return app_class(
+            surface, width, height,
+            motion_backend=PreviewMotionBackend(),
+        )
     return app_class(surface, width, height)
 
 
@@ -207,7 +228,7 @@ class PreviewControlPanel:
         y = self._draw_choices(surface, "CONNECTIVITY  [C]", "connectivity", CONNECTIVITY_STATES, y)
 
         help_lines = ("KEYS: S STATE / B BAT / A ALERT / C LINK",) if self.compact else (
-            "LEFT/RIGHT  APP", "1–7         SELECT", "R           RELOAD", "ESC         EXIT",
+            "LEFT/RIGHT  APP", "1–9         SELECT", "R           RELOAD", "ESC         EXIT",
         )
         help_y = y + 2 if self.compact else max(y + 5, height - 62)
         for line in help_lines:
@@ -422,6 +443,12 @@ def main() -> int:
                         logical_pos = shell.physical_to_logical(event.pos)
                         app.handle_event(pygame.event.Event(
                             pygame.MOUSEBUTTONDOWN, pos=logical_pos, button=event.button,
+                        ))
+                elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                    if not launcher_open and event.pos[0] < physical_width and hasattr(app, "handle_event"):
+                        logical_pos = shell.physical_to_logical(event.pos)
+                        app.handle_event(pygame.event.Event(
+                            pygame.MOUSEBUTTONUP, pos=logical_pos, button=event.button,
                         ))
 
             apply_state_to_app(app_names[app_index], app, preview_state)

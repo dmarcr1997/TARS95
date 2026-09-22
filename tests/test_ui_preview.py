@@ -212,7 +212,7 @@ menu_logical = manager.shell.physical_to_logical(menu_physical)
 assert manager.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=menu_logical, button=1))
 assert manager.launcher_open
 assert manager.render()
-assert len(manager.shell.touch_targets) == 6
+assert len(manager.shell.touch_targets) == 7
 for rect, _name in manager.shell.touch_targets:
     assert rect.width >= 48 and rect.height >= 48
 
@@ -237,10 +237,122 @@ assert not manager.launcher_open
 large_surface = pygame.Surface((480, 800))
 large_shell = Tars95Shell(480, 800)
 large_shell.render_launcher(large_surface, 'eyes', STATE_PRESENTATIONS['LISTENING'])
-assert len(large_shell.touch_targets) == 6
+assert len(large_shell.touch_targets) == 7
 for rect, _name in large_shell.touch_targets:
     assert rect.width >= 80 and rect.height >= 80
 
+manager.deactivate()
+pygame.quit()
+""".format(root=str(REPO_ROOT))
+        result = subprocess.run(
+            [sys.executable, "-c", code], cwd=REPO_ROOT,
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_motion_controls_require_deliberate_authorization(self) -> None:
+        code = """
+import os
+import sys
+import time
+from pathlib import Path
+
+os.environ['SDL_VIDEODRIVER'] = 'dummy'
+os.environ['SDL_AUDIODRIVER'] = 'dummy'
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+root = Path(r'{root}')
+sys.path.insert(0, str(root / 'tools' / 'ui-preview'))
+sys.path.insert(0, str(root / 'src'))
+sys.path.insert(0, str(root / 'src' / 'modules'))
+
+from preview_state import PreviewState, PreviewStateStore
+from device_preview import install_preview_stubs
+install_preview_stubs(PreviewStateStore())
+
+import pygame
+pygame.display.init()
+pygame.font.init()
+pygame.display.set_mode((480, 320))
+
+from modules.UI.apps.module_app_motion import MotionApp
+from modules.UI.module_ui_apps import AppManager
+
+class Backend:
+    label = 'TEST / NO HARDWARE'
+    def __init__(self):
+        self.commands = []
+    def run(self, action):
+        self.commands.append(action)
+    def emergency_stop(self):
+        self.commands.append('stop')
+
+backend = Backend()
+surface = pygame.Surface((320, 480))
+app = MotionApp(surface, 320, 480, motion_backend=backend)
+app.set_preview_state(PreviewState(
+    machine_state='standby', battery=78, alert='none', connectivity='online',
+))
+app.render()
+assert len(app._targets) == 8
+
+def logical(name):
+    rect = app._targets[name]
+    return (rect.centery, app.width - 1 - rect.centerx)
+
+# Directional input is inert until the operator completes the hold gesture.
+assert app.handle_event(pygame.event.Event(
+    pygame.MOUSEBUTTONDOWN, pos=logical('forward'), button=1,
+))
+assert backend.commands == []
+assert not app._armed
+
+arm_pos = logical('arm')
+assert app.handle_event(pygame.event.Event(
+    pygame.MOUSEBUTTONDOWN, pos=arm_pos, button=1,
+))
+app._arm_started_ms = pygame.time.get_ticks() - app.ARM_HOLD_MS
+assert app.handle_event(pygame.event.Event(
+    pygame.MOUSEBUTTONUP, pos=arm_pos, button=1,
+))
+assert app._armed
+
+assert app.handle_event(pygame.event.Event(
+    pygame.MOUSEBUTTONDOWN, pos=logical('forward'), button=1,
+))
+app._worker.join(timeout=1)
+app.update()
+assert backend.commands == ['forward']
+assert not app._armed
+assert not app._busy
+
+# Neutral is a motion command and therefore needs a fresh authorization.
+assert app.handle_event(pygame.event.Event(
+    pygame.MOUSEBUTTONDOWN, pos=logical('neutral'), button=1,
+))
+assert backend.commands == ['forward']
+
+# Stop and servo-disable remain available while output is locked.
+assert app.handle_event(pygame.event.Event(
+    pygame.MOUSEBUTTONDOWN, pos=logical('stop'), button=1,
+))
+deadline = time.monotonic() + 1
+while len(backend.commands) < 2 and time.monotonic() < deadline:
+    time.sleep(0.01)
+assert backend.commands[-1] == 'stop'
+assert not app._servos_disabled
+
+assert app.handle_event(pygame.event.Event(
+    pygame.MOUSEBUTTONDOWN, pos=logical('disable'), button=1,
+))
+deadline = time.monotonic() + 1
+while len(backend.commands) < 3 and time.monotonic() < deadline:
+    time.sleep(0.01)
+assert backend.commands[-1] == 'stop'
+assert app._servos_disabled
+
+manager = AppManager(surface, 320, 480, motion_backend=backend)
+assert manager.launch('motion')
+assert manager.current_app.motion_backend is backend
 manager.deactivate()
 pygame.quit()
 """.format(root=str(REPO_ROOT))

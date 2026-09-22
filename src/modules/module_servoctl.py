@@ -20,6 +20,7 @@ This license applies only to this file and does not override licenses of other f
 from __future__ import division
 import time
 import os
+import threading
 import board
 import busio
 from adafruit_pca9685 import PCA9685
@@ -65,6 +66,7 @@ _channels_initialized = set(servo_positions.keys())
 
 pca = None
 MAX_RETRIES = 3
+_emergency_stop = threading.Event()
 
 battery_module = None
 
@@ -368,6 +370,18 @@ def disable_all_servos():
     
     time.sleep(0.05)
 
+def request_emergency_stop():
+    """Latch motion cancellation and immediately remove servo PWM output."""
+    _emergency_stop.set()
+    disable_all_servos()
+
+def clear_emergency_stop():
+    """Release the stop latch before an explicitly authorized command."""
+    _emergency_stop.clear()
+
+def emergency_stop_requested():
+    return _emergency_stop.is_set()
+
 def reset_positions():
     global servo_positions
 
@@ -413,6 +427,10 @@ def move_servos_synchronized(movements, speed_factor, easing_strength=None):
     - easing_strength: Easing amount (None uses global default, 0 = linear, higher = more ease in/out)
     """
     global _channels_initialized
+
+    if _emergency_stop.is_set():
+        disable_all_servos()
+        return False
     
     effective_easing = easing_strength if easing_strength is not None else global_easing_strength
     
@@ -489,6 +507,9 @@ def move_servos_synchronized(movements, speed_factor, easing_strength=None):
     base_delay = 0.02 * (1.0 - effective_speed)
     
     while any(s['current'] != s['target'] for s in servo_data):
+        if _emergency_stop.is_set():
+            disable_all_servos()
+            return False
         for servo in servo_data:
             if servo['current'] != servo['target']:
                 servo['current'] += servo['step']
@@ -519,6 +540,7 @@ def move_servos_synchronized(movements, speed_factor, easing_strength=None):
     signal_servo_activity()
     
     time.sleep(0.05)
+    return True
 
 def move_legs(left_height_percent=None, right_height_percent=None, left_leg_percent=None, right_leg_percent=None, speed_factor=1.0):
     """

@@ -40,6 +40,7 @@ class ShellApp:
 
 SHELL_APPS = (
     ShellApp("eyes", "EYES", "PRESENCE / HOME", "eyes"),
+    ShellApp("motion", "MOTION", "LOCOMOTION / SAFETY", "motion"),
     ShellApp("systems", "SYSTEMS", "POWER / HEALTH", "systems"),
     ShellApp("audio", "AUDIO", "SIGNAL DIAGNOSTICS", "audio"),
     ShellApp("avatar", "AVATAR", "IDENTITY FRAME", "avatar"),
@@ -124,17 +125,22 @@ class Tars95Shell:
         self._targets = []
         margin = scaled(12, scale)
         gap_x = scaled(10, scale)
-        gap_y = scaled(8, scale)
-        grid_top = title_h + scaled(29, scale)
+        gap_y = scaled(6, scale)
+        grid_top = title_h + scaled(20, scale)
         tile_w = (frame.get_width() - margin * 2 - gap_x) // 2
-        tile_h = scaled(59, scale)
+        row_count = (len(SHELL_APPS) + 1) // 2
+        grid_bottom = frame.get_height() - status_h - scaled(6, scale)
+        tile_h = (grid_bottom - grid_top - gap_y * (row_count - 1)) // row_count
         for index, app in enumerate(SHELL_APPS):
             column = index % 2
             row = index // 2
+            tile_width = tile_w
+            if index == len(SHELL_APPS) - 1 and len(SHELL_APPS) % 2:
+                tile_width = frame.get_width() - margin * 2
             rect = pygame.Rect(
                 margin + column * (tile_w + gap_x),
                 grid_top + row * (tile_h + gap_y),
-                tile_w,
+                tile_width,
                 tile_h,
             )
             self._draw_app_tile(frame, rect, app, app.name == active_app, presentation, scale, index)

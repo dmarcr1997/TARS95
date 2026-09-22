@@ -30,6 +30,7 @@ except ImportError:
 from modules.UI.apps.module_app_clock import ClockApp
 from modules.UI.apps.module_app_audio_timeline import AudioTimelineApp
 from modules.UI.apps.module_app_boot import BootApp
+from modules.UI.apps.module_app_motion import MotionApp
 from modules.UI.apps.module_app_systems import SystemsApp
 from modules.UI.module_ui_shell import Tars95Shell
 from modules.UI.module_ui_state import resolve_presentation
@@ -56,6 +57,7 @@ from UI.screensavers.module_screensaver_dashboard import DashboardAnimation
 
 AVAILABLE_APPS = {
     "boot": {"class": BootApp, "type": "pygame", "label": "Power-On", "system": True},
+    "motion": {"class": MotionApp, "type": "pygame", "label": "Motion"},
     "systems": {"class": SystemsApp, "type": "pygame", "label": "Systems"},
     "clock": {"class": ClockApp, "type": "pygame", "label": "Clock"},
     "dashboard": {"class": DashboardAnimation, "type": "opengl", "label": "Dashboard"},
@@ -78,6 +80,7 @@ class AppManager:
     def __init__(
         self, screen, width, height, display_width=None, display_height=None,
         rotation=0, on_terminal=None, battery_module=None, cpu_temp_module=None,
+        motion_backend=None,
     ):
         self.screen = screen
         self.width = width
@@ -98,6 +101,7 @@ class AppManager:
         self.on_terminal = on_terminal
         self.battery_module = battery_module
         self.cpu_temp_module = cpu_temp_module
+        self.motion_backend = motion_backend
         self._system_connectivity = ("N/A", None)
 
         self.gl_mode_active = False
@@ -301,6 +305,13 @@ class AppManager:
                         cpu_temp_module=self.cpu_temp_module,
                     )
                     self.current_app.set_connectivity_status(*self._system_connectivity)
+                elif app_name == "motion":
+                    self.current_app = app_class(
+                        render_surface,
+                        self.width,
+                        self.height,
+                        motion_backend=self.motion_backend,
+                    )
                 else:
                     self.current_app = app_class(render_surface, self.width, self.height)
 
