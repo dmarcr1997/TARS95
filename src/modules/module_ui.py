@@ -608,16 +608,13 @@ class UIManager(threading.Thread):
             display_width = actual_size[0]
             display_height = actual_size[1]
             
-            actual_is_portrait = display_height > display_width
-            
-            if actual_is_portrait:
-                self.logical_width = display_width
-                self.logical_height = display_height
-                self.effective_rotate = 0
-            else:
-                self.logical_width = display_height
-                self.logical_height = display_width
-                self.effective_rotate = 270
+            # TARS/95 apps and the terminal rotate their physical frame 90
+            # degrees into the shared logical surface. Always undo that
+            # rotation, including on portrait desktops. Swapping dimensions
+            # keeps the final frame exactly the size of the actual display.
+            self.logical_width = display_height
+            self.logical_height = display_width
+            self.effective_rotate = 270
             
             self.actual_display_width = display_width
             self.actual_display_height = display_height
