@@ -26,6 +26,7 @@ MODULES_DIR = SRC_DIR / "modules"
 PHYSICAL_SIZES = {
     "480x320": (480, 320),
     "800x480": (800, 480),
+    "480x800": (480, 800),
 }
 
 APP_SPECS = {

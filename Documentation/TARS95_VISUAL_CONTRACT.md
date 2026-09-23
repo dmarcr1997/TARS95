@@ -4,7 +4,7 @@
 
 **Status:** Active design authority; visual proof approval is due in UI-012
 
-**Primary target:** Raspberry Pi 5 robot display, 480×320 physical landscape
+**Primary target:** Raspberry Pi 5 robot displays at 480×320 landscape and 480×800 portrait
 
 **Direction:** 60% Windows 95 interaction grammar / 40% original late-90s anime instrumentation
 
@@ -40,10 +40,12 @@ Clock information belongs in idle/status presentation. Avatar presentation is se
 |---|---:|---:|---|
 | Primary robot display | 480×320 landscape | 320×480 portrait | Rotate 270° |
 | Secondary display | 800×480 landscape | 480×800 portrait | Rotate 270° |
+| Installed portrait display | 480×800 portrait | 800×480 landscape | Rotate 270° |
 
 Review device compositions at the **physical output size**. Build pygame layouts against the logical surface used by production. Do not treat the desktop preview control rail as part of the robot canvas.
 
 - Target 30 FPS on Raspberry Pi 5.
+- Derive UI scale from the limiting axis: `min(width / 480, height / 320)`. Extra portrait height creates layout space; it must not enlarge typography past the available width.
 - Prefer opaque fills, cached text, integer-aligned geometry, and small dirty regions.
 - Avoid continuous full-screen alpha effects, blur, heavy particles, and unnecessary per-frame asset scaling.
 - Static chrome may be detailed; moving elements should be sparse and purposeful.

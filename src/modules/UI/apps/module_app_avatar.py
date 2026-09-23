@@ -188,7 +188,7 @@ class AvatarApp:
         tinted = oriented.copy()
         tinted.fill((*CHROME_FACE, 255), special_flags=pygame.BLEND_RGBA_MULT)
 
-        ui_scale = self.height / 320.0
+        ui_scale = scale_for(self.screen)
         title_h = scaled(28, ui_scale)
         status_h = scaled(25, ui_scale)
         available = pygame.Rect(

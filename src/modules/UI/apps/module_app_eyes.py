@@ -153,8 +153,9 @@ class EyesApp:
             # Map portrait logical input back to the authored physical frame.
             physical_x = self.physical_width - 1 - y
             physical_y = x
-            chrome_height = scaled(28, self.physical_height / 320.0)
-            status_height = scaled(25, self.physical_height / 320.0)
+            scale = scale_for(self._physical_frame)
+            chrome_height = scaled(28, scale)
+            status_height = scaled(25, scale)
             if physical_y < chrome_height or physical_y >= self.physical_height - status_height:
                 return False
             reaction = self.eyes.handle_touch(physical_x, physical_y)

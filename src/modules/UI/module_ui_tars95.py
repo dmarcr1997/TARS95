@@ -38,8 +38,13 @@ def scaled(value: int | float, scale: float) -> int:
 
 
 def scale_for(surface: pygame.Surface) -> float:
-    """Return the scale relative to the primary 480x320 physical display."""
-    return surface.get_height() / 320.0
+    """Scale to the limiting axis of the 480x320 design canvas.
+
+    Height-only scaling makes portrait displays treat their extra vertical
+    space as permission to enlarge text and controls past the available
+    width. The narrowest axis is the real constraint at every aspect ratio.
+    """
+    return min(surface.get_width() / 480.0, surface.get_height() / 320.0)
 
 
 @lru_cache(maxsize=32)

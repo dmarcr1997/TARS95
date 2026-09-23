@@ -70,7 +70,7 @@ class Tars95Shell:
 
     def is_taskbar_trigger(self, physical_position: tuple[int, int]) -> bool:
         x, y = physical_position
-        status_h = scaled(25, self.physical_height / 320.0)
+        status_h = scaled(25, scale_for(self._frame))
         return y >= self.physical_height - status_h and x < self.physical_width / 5
 
     def launcher_action(self, physical_position: tuple[int, int]) -> tuple[str, str | None] | None:
@@ -79,7 +79,7 @@ class Tars95Shell:
                 return "launch", app_name
 
         x, y = physical_position
-        status_h = scaled(28, self.physical_height / 320.0)
+        status_h = scaled(28, scale_for(self._frame))
         if y >= self.physical_height - status_h:
             cell = int(x / (self.physical_width / 4))
             if cell == 0:

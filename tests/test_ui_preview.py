@@ -172,6 +172,36 @@ class WebContractTests(unittest.TestCase):
 
 
 class DeviceRenderTests(unittest.TestCase):
+    def test_responsive_scale_uses_the_limiting_axis(self) -> None:
+        code = """
+import os
+import sys
+from pathlib import Path
+
+os.environ['SDL_VIDEODRIVER'] = 'dummy'
+os.environ['SDL_AUDIODRIVER'] = 'dummy'
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+root = Path(r'{root}')
+sys.path.insert(0, str(root / 'src'))
+
+import pygame
+pygame.display.init()
+pygame.font.init()
+
+from modules.UI.module_ui_tars95 import scale_for
+
+assert scale_for(pygame.Surface((480, 320))) == 1.0
+assert scale_for(pygame.Surface((800, 480))) == 1.5
+assert scale_for(pygame.Surface((480, 800))) == 1.0
+assert scale_for(pygame.Surface((960, 640))) == 2.0
+pygame.quit()
+""".format(root=str(REPO_ROOT))
+        result = subprocess.run(
+            [sys.executable, "-c", code], cwd=REPO_ROOT,
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
     def test_shell_launcher_routes_touch_and_home(self) -> None:
         code = """
 import os
@@ -240,6 +270,16 @@ large_shell.render_launcher(large_surface, 'eyes', STATE_PRESENTATIONS['LISTENIN
 assert len(large_shell.touch_targets) == 7
 for rect, _name in large_shell.touch_targets:
     assert rect.width >= 80 and rect.height >= 80
+
+portrait_surface = pygame.Surface((800, 480))
+portrait_shell = Tars95Shell(800, 480)
+portrait_shell.render_launcher(portrait_surface, 'eyes', STATE_PRESENTATIONS['LISTENING'])
+assert portrait_shell._frame.get_size() == (480, 800)
+assert len(portrait_shell.touch_targets) == 7
+for rect, _name in portrait_shell.touch_targets:
+    assert rect.width >= 80 and rect.height >= 80
+    assert pygame.Rect(0, 0, 480, 800).contains(rect)
+assert portrait_shell.is_taskbar_trigger((10, 790))
 
 manager.deactivate()
 pygame.quit()
@@ -729,7 +769,7 @@ pygame.quit()
                         if app_name == "avatar":
                             self.assertEqual((22, 217, 196), image.getpixel((103, 307)))
 
-    def test_all_apps_render_at_both_physical_sizes_without_hardware(self) -> None:
+    def test_all_apps_render_at_supported_physical_sizes_without_hardware(self) -> None:
         cases = [
             (app_name, size, MACHINE_STATES[index % len(MACHINE_STATES)])
             for index, app_name in enumerate(APP_SPECS)

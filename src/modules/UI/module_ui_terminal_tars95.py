@@ -141,7 +141,7 @@ class Tars95TerminalRenderer:
             owner.scroll_down(1)
             return True
 
-        status_h = scaled(25, self.physical_height / 320.0)
+        status_h = scaled(25, scale_for(self.frame))
         if position[1] >= self.physical_height - status_h:
             cell = int(position[0] / (self.physical_width / 5))
             if cell == 0:

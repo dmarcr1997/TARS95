@@ -31,6 +31,7 @@ from modules.UI.module_ui_tars95 import (
     draw_status_bar,
     draw_title_bar,
     load_font,
+    scale_for,
     scaled,
 )
 from modules.UI.module_ui_state import resolve_presentation
@@ -124,7 +125,7 @@ class AudioTimelineApp:
         self.width = height
         self.height = width
         self.screen = pygame.Surface((self.width, self.height))
-        self._ui_scale = self.height / 320.0
+        self._ui_scale = scale_for(self.screen)
         self._title_h = scaled(28, self._ui_scale)
         self._status_h = scaled(25, self._ui_scale)
 
