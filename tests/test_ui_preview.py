@@ -250,6 +250,71 @@ pygame.quit()
         )
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
+    def test_audio_diagnostics_preview_exercises_full_signal_chain(self) -> None:
+        code = """
+import os
+import sys
+from pathlib import Path
+
+os.environ['SDL_VIDEODRIVER'] = 'dummy'
+os.environ['SDL_AUDIODRIVER'] = 'dummy'
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+root = Path(r'{root}')
+sys.path.insert(0, str(root / 'tools' / 'ui-preview'))
+sys.path.insert(0, str(root / 'src'))
+sys.path.insert(0, str(root / 'src' / 'modules'))
+
+from preview_state import PreviewState, PreviewStateStore
+from device_preview import HARDWARE_ATTEMPTS, install_preview_stubs
+install_preview_stubs(PreviewStateStore())
+
+import pygame
+pygame.display.init()
+pygame.font.init()
+pygame.display.set_mode((480, 320))
+
+from modules.UI.apps.module_app_audio_timeline import AudioTimelineApp
+
+surface = pygame.Surface((320, 480))
+app = AudioTimelineApp(surface, 320, 480)
+app.set_preview_state(PreviewState(
+    machine_state='talking', battery=68, alert='none', connectivity='online',
+))
+app.update()
+app.render()
+
+assert app._preview_mode
+assert app._source_mode == 'PREVIEW FIXTURE'
+assert app._chart_rect[2] == 464
+assert app._chart_rect[1] + app._chart_rect[3] <= app.height
+assert len(app._segments) == 151
+assert app._wake_n == 1
+assert app._bargein_n == 1
+assert app._tts_n == 1
+
+stages = {{
+    name: value
+    for name, value, _color in app._signal_states(
+        app._segments, app._wake_times, app._bargein_times, app._noise_floor,
+    )
+}}
+assert stages == {{
+    'MIC': 'FIXTURE',
+    'WAKE': 'SEEN',
+    'SPEECH': 'ACTIVE',
+    'TTS': 'ACTIVE',
+    'NOISE': 'TRACK',
+    'BARGE': 'DETECT',
+}}
+assert HARDWARE_ATTEMPTS == []
+pygame.quit()
+""".format(root=str(REPO_ROOT))
+        result = subprocess.run(
+            [sys.executable, "-c", code], cwd=REPO_ROOT,
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
     def test_motion_controls_require_deliberate_authorization(self) -> None:
         code = """
 import os

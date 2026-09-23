@@ -160,6 +160,9 @@ class AudioTimelineApp:
         self._battery = None
         self._alert = "NONE"
         self._connectivity = "N/A"
+        self._source_mode = "INPUT N/A"
+        self._preview_mode = False
+        self._preview_key = None
 
         # Peak hold
         self._peak_rms  = 0.0
@@ -184,16 +187,16 @@ class AudioTimelineApp:
 
         # Layout
         self._pad = scaled(8, self._ui_scale)
-        self._legend_h = scaled(24, self._ui_scale)
+        self._legend_h = scaled(34, self._ui_scale)
         self._toolbar_h = self._status_h
         self._footer_row_h = scaled(18, self._ui_scale)
         self._time_axis_h = scaled(12, self._ui_scale)
         self._bottom_margin = self._footer_row_h + 8 + self._toolbar_h
 
         chart_top = self._title_h + self._pad + self._legend_h + scaled(4, self._ui_scale)
-        chart_bot = height - self._bottom_margin - self._pad - self._time_axis_h
+        chart_bot = self.height - self._bottom_margin - self._pad - self._time_axis_h
         self._chart_rect = (self._pad, chart_top,
-                            width - self._pad * 2, chart_bot - chart_top)
+                            self.width - self._pad * 2, chart_bot - chart_top)
         self._time_axis_y = chart_bot
 
         # Reserve a real diagnostic column instead of overlaying it on lanes.
@@ -236,6 +239,94 @@ class AudioTimelineApp:
         self._battery = snapshot.battery
         self._alert = str(snapshot.alert).upper()
         self._connectivity = str(snapshot.connectivity).upper()
+        self._preview_mode = True
+        self._source_mode = "PREVIEW FIXTURE"
+        preview_key = (
+            self._machine_state, self._alert, self._connectivity,
+        )
+        if preview_key != self._preview_key:
+            self._preview_key = preview_key
+            self._seed_preview_fixture(self._machine_state)
+
+    def _seed_preview_fixture(self, target_state):
+        """Build a deterministic signal story for safe desktop review."""
+        target_state = target_state if target_state in STATE_COLOR else "STANDBY"
+        segments = []
+        wake_times = []
+        bargein_times = []
+
+        for index in range(151):
+            moment = index / 10.0
+            label = "silence"
+            state = "STANDBY"
+            rms = 0.0042 + abs(math.sin(index * 0.31)) * 0.0015
+
+            if target_state != "STANDBY":
+                if 2.0 <= moment < 2.8:
+                    state = "LISTENING"
+                    label = "noise"
+                    rms = 0.008 + abs(math.sin(index * 0.57)) * 0.004
+                elif 2.8 <= moment < 7.2:
+                    state = "LISTENING"
+                    label = "speech"
+                    rms = 0.021 + abs(math.sin(index * 0.43)) * 0.025
+                elif 7.2 <= moment < 10.2:
+                    state = "THINKING"
+                    label = "noise" if index % 7 == 0 else "silence"
+                    rms = 0.005 + abs(math.sin(index * 0.23)) * 0.003
+                else:
+                    state = target_state
+                    if target_state == "LISTENING":
+                        label = "speech"
+                        rms = 0.020 + abs(math.sin(index * 0.39)) * 0.022
+                    elif target_state == "THINKING":
+                        label = "noise" if index % 6 == 0 else "silence"
+                        rms = 0.005 + abs(math.sin(index * 0.27)) * 0.003
+                    elif target_state == "TALKING":
+                        label = "speech" if 13.6 <= moment < 14.2 else "tts_playing"
+                        rms = 0.024 + abs(math.sin(index * 0.35)) * 0.021
+                    else:
+                        label = "noise"
+                        rms = 0.007 + abs(math.sin(index * 0.29)) * 0.005
+
+            segments.append({
+                "t": moment,
+                "dur": 100,
+                "label": label,
+                "rms": round(rms, 4),
+                "state": state,
+                "thr": 0.015,
+                "nf": 0.005,
+            })
+
+        if target_state != "STANDBY":
+            wake_times.append(2.0)
+        if target_state == "TALKING":
+            bargein_times.append(13.6)
+
+        with self._lock:
+            self._segments = segments
+            self._wake_times = wake_times
+            self._bargein_times = bargein_times
+            self._speech_n = 1 if target_state != "STANDBY" else 0
+            self._tts_n = 1 if target_state == "TALKING" else 0
+            self._wake_n = len(wake_times)
+            self._bargein_n = len(bargein_times)
+            self._last_label = segments[-1]["label"]
+            self._prev_state = target_state
+            self._cur_state = target_state
+            self._cur_rms = segments[-1]["rms"]
+            self._noise_floor = 0.005
+            self._peak_rms = max(segment["rms"] for segment in segments)
+            self._peak_time = max(
+                segment["t"] for segment in segments
+                if segment["rms"] == self._peak_rms
+            )
+            self._t0 = time.time() - VIEW_SECONDS
+
+        self._stt_silence_thr = 0.015
+        self._stt_amp_gain = 10.0
+        self._stt_margin = 3.0
 
     # ── Audio hookup ──────────────────────────────────────────────────────
 
@@ -248,6 +339,7 @@ class AudioTimelineApp:
             self._hop_frames = int(rate * _HOP_MS / 1000)
             self._start_time = time.monotonic()
             self._running = True
+            self._source_mode = "LIVE MIC"
             self._mic_rid = _hub.register_callback(self._on_audio)
         except Exception as e:
             print(f"[AudioTimeline] Mic hookup failed: {e}")
@@ -413,7 +505,7 @@ class AudioTimelineApp:
             cur_rms   = self._cur_rms
             noise_floor = self._noise_floor
 
-        self._draw_legend()
+        self._draw_signal_chain(segs, wakes, bargeins, noise_floor)
 
         if not segs:
             self._draw_waiting()
@@ -449,27 +541,22 @@ class AudioTimelineApp:
             icon="audio",
         )
 
-        battery = "N/A" if self._battery is None else f"{int(self._battery):03d}%"
-        battery_color = OFFLINE_GRAY if self._battery is None else (
-            FAULT_RED if self._battery <= 20
-            else CAUTION_AMBER if self._battery <= 40
-            else READY_GREEN
-        )
         link_color = {
             "ONLINE": READY_GREEN,
             "DEGRADED": CAUTION_AMBER,
             "OFFLINE": OFFLINE_GRAY,
         }.get(self._connectivity, OFFLINE_GRAY)
-        mic_value = "LIVE" if self._running else "N/A"
-        rms_value = f"{self._cur_rms:.3f}" if self._running else "N/A"
+        has_input = self._running or self._preview_mode
+        source_value = "LIVE" if self._running else ("FIXTURE" if self._preview_mode else "N/A")
+        rms_value = f"{self._cur_rms:.3f}" if has_input else "N/A"
         draw_status_bar(
             self.screen,
             (
                 ("HOME", "EYES", CHROME_HIGHLIGHT),
-                ("MIC", mic_value, PHOSPHOR_CYAN if self._running else OFFLINE_GRAY),
-                ("RMS", rms_value, SPEECH if self._running else OFFLINE_GRAY),
+                ("SRC", source_value, PHOSPHOR_CYAN if has_input else OFFLINE_GRAY),
+                ("RMS", rms_value, SPEECH if has_input else OFFLINE_GRAY),
+                ("STATE", self._cur_state, STATE_COLOR.get(self._cur_state, OFFLINE_GRAY)),
                 ("LINK", self._connectivity, link_color),
-                ("BAT", battery, battery_color),
             ),
             height=self._status_h,
         )
@@ -508,31 +595,76 @@ class AudioTimelineApp:
             PANEL_LINE,
         )
 
-    # ── Legend ────────────────────────────────────────────────────────────
+    # ── Signal chain ──────────────────────────────────────────────────────
 
-    def _draw_legend(self):
-        y = self._pad + 2
-        rendered, total_w = [], 0
-        for meta in _LANE_META:
-            surf = self.font_label.render(meta['name'], True, TEXT_DIM)
-            rendered.append((surf, meta['color']))
-            total_w += 8 + 6 + surf.get_width() + 16
-        total_w -= 8
+    def _signal_states(self, segs, wakes, bargeins, noise_floor):
+        has_input = bool(segs) and (self._running or self._preview_mode)
+        source_value = "LIVE" if self._running else ("FIXTURE" if self._preview_mode else "N/A")
+        if not has_input:
+            return (
+                ("MIC", source_value, OFFLINE_GRAY),
+                ("WAKE", "N/A", OFFLINE_GRAY),
+                ("SPEECH", "N/A", OFFLINE_GRAY),
+                ("TTS", "N/A", OFFLINE_GRAY),
+                ("NOISE", "N/A", OFFLINE_GRAY),
+                ("BARGE", "N/A", OFFLINE_GRAY),
+            )
 
-        ix = (self.width - total_w) // 2
-        for surf, color in rendered:
-            pill_h, py = 8, y + (self._legend_h - 8) // 2 - 2
-            pygame.draw.rect(self.screen, color, (ix, py, 8, pill_h))
-            self.screen.blit(surf, (ix + 14, y + (self._legend_h - surf.get_height()) // 2 - 2))
-            ix += 14 + surf.get_width() + 16
+        latest = segs[-1]["t"]
+        recent = [segment for segment in segs if segment["t"] >= latest - 1.0]
+        wake_seen = bool(wakes and wakes[-1] >= latest - VIEW_SECONDS)
+        barge_seen = bool(bargeins and bargeins[-1] >= latest - 2.0)
+        speech_active = any(segment["label"] == "speech" for segment in recent)
+        tts_active = (
+            self._cur_state == "TALKING"
+            or any(segment["label"] == "tts_playing" for segment in recent)
+        )
+        noise_high = (
+            segs[-1]["label"] == "noise"
+            and segs[-1]["rms"] >= noise_floor * 1.5
+        )
+        return (
+            ("MIC", source_value, PHOSPHOR_CYAN),
+            ("WAKE", "SEEN" if wake_seen else "ARMED", WAKE_COL if wake_seen else TEXT_DIM),
+            ("SPEECH", "ACTIVE" if speech_active else "QUIET", SPEECH if speech_active else TEXT_DIM),
+            ("TTS", "ACTIVE" if tts_active else "IDLE", TTS_COL if tts_active else TEXT_DIM),
+            ("NOISE", "HIGH" if noise_high else "TRACK", NOISE_COL if noise_high else TEXT_DIM),
+            ("BARGE", "DETECT" if barge_seen else "ARMED", BARGEIN_COL if barge_seen else TEXT_DIM),
+        )
 
-        lx = self._pad + 4
-        lw = self.width - self._pad * 2 - 8
-        sep = pygame.Surface((lw, 1), pygame.SRCALPHA)
-        for sx in range(lw):
-            frac = 1.0 - abs(sx - lw / 2) / (lw / 2)
-            sep.set_at((sx, 0), (*BORDER, int(45 * frac)))
-        self.screen.blit(sep, (lx, y + self._legend_h - 3))
+    def _draw_signal_chain(self, segs, wakes, bargeins, noise_floor):
+        stages = self._signal_states(segs, wakes, bargeins, noise_floor)
+        x = self._pad
+        y = self._title_h + scaled(4, self._ui_scale)
+        width = self.width - self._pad * 2
+        height = self._legend_h
+        cell_width = width // len(stages)
+
+        pygame.draw.rect(self.screen, PANEL, (x, y, width, height))
+        pygame.draw.rect(self.screen, BORDER, (x, y, width, height), 1)
+
+        for index, (label, value, color) in enumerate(stages):
+            cell_x = x + index * cell_width
+            if index:
+                pygame.draw.line(
+                    self.screen, BORDER,
+                    (cell_x, y + 3), (cell_x, y + height - 3), 1,
+                )
+            pygame.draw.rect(
+                self.screen, color,
+                (cell_x + scaled(5, self._ui_scale), y + scaled(7, self._ui_scale),
+                 scaled(4, self._ui_scale), scaled(4, self._ui_scale)),
+            )
+            label_surface = self.font_xs.render(label, True, TEXT_DIM)
+            value_surface = self.font_xs.render(value, True, color)
+            self.screen.blit(
+                label_surface,
+                (cell_x + scaled(13, self._ui_scale), y + scaled(3, self._ui_scale)),
+            )
+            self.screen.blit(
+                value_surface,
+                (cell_x + scaled(5, self._ui_scale), y + scaled(17, self._ui_scale)),
+            )
 
     # ── Chart ─────────────────────────────────────────────────────────────
 
