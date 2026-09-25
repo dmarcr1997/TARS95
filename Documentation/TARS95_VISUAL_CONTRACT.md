@@ -93,6 +93,13 @@ The same state name and meaning must appear on Eyes, the shell, diagnostics, and
 
 State transitions should feel mechanical: hard cuts or stepped changes lasting 80–160 ms. Do not use bounce, elastic easing, or cinematic wipes. Organic eye blinks and gaze movement are allowed because they express presence, not interface decoration. Reduced-motion settings remove sweeps, pulses, and nonessential transitions without hiding state.
 
+### Device idle and alert takeover
+
+- Idle watch appears only over Eyes after 45 seconds without pointer or touch input while the machine is in `STANDBY`. Any touch wakes the active Eyes view without changing apps.
+- `WARNING` and `FAULT` are system-level takeovers. They replace the active app immediately, keep the affected state and next safe action visible, and provide a direct path to Systems.
+- Warning and fault takeovers are not cleared by an incidental touch. Fault copy states that motion output is inhibited; only the explicit Systems action changes the view.
+- Idle animation stays sparse and deterministic enough for the Raspberry Pi display budget. Alert surfaces use flat signal color and hazard marks without glow, strobing, or decorative bevels.
+
 ## 6. Typography
 
 Core UI must work without internet access. Use repository-owned font files and system fallbacks only; do not load Google Fonts or another CDN.

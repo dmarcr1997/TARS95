@@ -172,6 +172,99 @@ class WebContractTests(unittest.TestCase):
 
 
 class DeviceRenderTests(unittest.TestCase):
+    def test_idle_warning_and_fault_take_over_the_active_app(self) -> None:
+        code = """
+import os
+import sys
+from pathlib import Path
+
+os.environ['SDL_VIDEODRIVER'] = 'dummy'
+os.environ['SDL_AUDIODRIVER'] = 'dummy'
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+root = Path(r'{root}')
+sys.path.insert(0, str(root / 'tools' / 'ui-preview'))
+sys.path.insert(0, str(root / 'src'))
+sys.path.insert(0, str(root / 'src' / 'modules'))
+
+from preview_state import PreviewState, PreviewStateStore
+from device_preview import HARDWARE_ATTEMPTS, install_preview_stubs
+install_preview_stubs(PreviewStateStore())
+
+import pygame
+pygame.display.init()
+pygame.font.init()
+pygame.display.set_mode((480, 320))
+
+from modules.UI.module_ui_apps import AppManager
+from modules.UI.module_ui_state import STATE_PRESENTATIONS
+from modules.UI.module_ui_state_screen import Tars95StateScreen
+
+surface = pygame.Surface((320, 480))
+manager = AppManager(surface, 320, 480, idle_delay_ms=1)
+assert manager.launch('eyes')
+manager.current_app.set_preview_state(PreviewState(
+    machine_state='standby', battery=72, alert='none', connectivity='online',
+))
+manager._last_interaction_ms = pygame.time.get_ticks() - 100
+assert manager.render()
+assert manager.state_screen.visible_mode == 'idle'
+
+# Any touch wakes the idle screen without changing applications.
+assert manager.handle_event(pygame.event.Event(
+    pygame.MOUSEBUTTONDOWN, pos=(160, 240), button=1,
+))
+assert manager.state_screen.visible_mode is None
+assert manager.current_app_name == 'eyes'
+
+# Warnings override Eyes and route the primary action to Systems.
+manager.current_app.set_preview_state(PreviewState(
+    machine_state='standby', battery=38, alert='warning', connectivity='degraded',
+))
+assert manager.render()
+assert manager.state_screen.visible_mode == 'warning'
+assert manager.state_screen.systems_target is not None
+target = manager.state_screen.systems_target.center
+logical_target = manager.shell.physical_to_logical(target)
+assert manager.handle_event(pygame.event.Event(
+    pygame.MOUSEBUTTONDOWN, pos=logical_target, button=1,
+))
+assert manager.current_app_name == 'systems'
+
+# Faults use the non-dismissible lockout treatment until Systems is opened.
+assert manager.launch('eyes')
+manager.current_app.set_preview_state(PreviewState(
+    machine_state='talking', battery=18, alert='fault', connectivity='offline',
+))
+assert manager.render()
+assert manager.state_screen.visible_mode == 'fault'
+
+# The same screen remains valid on the installed portrait display.
+portrait_surface = pygame.Surface((800, 480))
+portrait = Tars95StateScreen(800, 480)
+for mode, presentation in (
+    ('idle', STATE_PRESENTATIONS['STANDBY']),
+    ('warning', STATE_PRESENTATIONS['WARNING']),
+    ('fault', STATE_PRESENTATIONS['FAULT']),
+):
+    portrait.render(
+        portrait_surface, mode, presentation,
+        battery=55, connectivity='DEGRADED',
+    )
+    assert portrait.frame.get_size() == (480, 800)
+    if mode != 'idle':
+        assert portrait.systems_target is not None
+        assert pygame.Rect(0, 0, 480, 800).contains(portrait.systems_target)
+
+assert HARDWARE_ATTEMPTS == []
+manager.deactivate()
+pygame.quit()
+""".format(root=str(REPO_ROOT))
+        result = subprocess.run(
+            [sys.executable, "-c", code], cwd=REPO_ROOT,
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
     def test_responsive_scale_uses_the_limiting_axis(self) -> None:
         code = """
 import os

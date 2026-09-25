@@ -33,6 +33,7 @@ from modules.UI.apps.module_app_boot import BootApp
 from modules.UI.apps.module_app_motion import MotionApp
 from modules.UI.apps.module_app_systems import SystemsApp
 from modules.UI.module_ui_shell import Tars95Shell
+from modules.UI.module_ui_state_screen import Tars95StateScreen
 from modules.UI.module_ui_state import resolve_presentation
 
 try:
@@ -80,7 +81,7 @@ class AppManager:
     def __init__(
         self, screen, width, height, display_width=None, display_height=None,
         rotation=0, on_terminal=None, battery_module=None, cpu_temp_module=None,
-        motion_backend=None,
+        motion_backend=None, idle_delay_ms=45_000,
     ):
         self.screen = screen
         self.width = width
@@ -103,6 +104,9 @@ class AppManager:
         self.cpu_temp_module = cpu_temp_module
         self.motion_backend = motion_backend
         self._system_connectivity = ("N/A", None)
+        self.state_screen = Tars95StateScreen(width, height)
+        self.idle_delay_ms = max(0, int(idle_delay_ms))
+        self._last_interaction_ms = pygame.time.get_ticks()
 
         self.gl_mode_active = False
         try:
@@ -135,6 +139,7 @@ class AppManager:
     def open_launcher(self):
         if not self.is_system_app_active():
             self.launcher_open = True
+            self._note_interaction()
 
     def close_launcher(self):
         self.launcher_open = False
@@ -161,6 +166,7 @@ class AppManager:
 
     def launch(self, app_name):
         self.launcher_open = False
+        self._note_interaction()
         if self.current_app and hasattr(self.current_app, 'cleanup'):
             self.current_app.cleanup()
             self.current_app = None
@@ -176,6 +182,7 @@ class AppManager:
 
     def deactivate(self):
         self.launcher_open = False
+        self.state_screen.clear()
         self.active = False
         if self.current_app:
             if hasattr(self.current_app, 'cleanup'):
@@ -193,7 +200,19 @@ class AppManager:
             return False
         if self.is_system_app_active():
             return True
+        if self.state_screen.visible_mode:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                physical_position = self.shell.logical_to_physical(event.pos)
+                action = self.state_screen.action_at(physical_position)
+                if self.state_screen.visible_mode == "idle":
+                    self._note_interaction()
+                    self.state_screen.clear()
+                elif action == "systems":
+                    self.launch("systems")
+                return True
+            return True
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            self._note_interaction()
             physical_position = self.shell.logical_to_physical(event.pos)
             if self.launcher_open:
                 action = self.shell.launcher_action(physical_position)
@@ -226,6 +245,7 @@ class AppManager:
 
         try:
             self.current_app.update()
+            state_mode = self._state_screen_mode()
 
             if self.current_app_type == "opengl":
                 original_flip = pygame.display.flip
@@ -234,12 +254,18 @@ class AppManager:
                     self.current_app.render()
                 finally:
                     pygame.display.flip = original_flip
-                if self.launcher_open:
+                if state_mode:
+                    shell_surface = self._ensure_offscreen_surface()
+                    self._render_state_screen(shell_surface, state_mode)
+                    self._render_surface_to_gl(shell_surface)
+                elif self.launcher_open:
                     shell_surface = self._ensure_offscreen_surface()
                     self.shell.render_launcher(
                         shell_surface, self.current_app_name, self._presentation(),
                     )
                     self._render_surface_to_gl(shell_surface)
+                else:
+                    self.state_screen.clear()
                 return False
             else:
                 self.current_app.render()
@@ -247,11 +273,17 @@ class AppManager:
                 if self.current_app_name == "boot" and getattr(self.current_app, "complete", False):
                     self.launch(self.boot_target)
 
-                if self.launcher_open:
+                if state_mode:
+                    state_surface = self.offscreen_surface if self.gl_mode_active and HAS_OPENGL else self.screen
+                    self._render_state_screen(state_surface, state_mode)
+                elif self.launcher_open:
                     shell_surface = self.offscreen_surface if self.gl_mode_active and HAS_OPENGL else self.screen
                     self.shell.render_launcher(
                         shell_surface, self.current_app_name, self._presentation(),
                     )
+                    self.state_screen.clear()
+                else:
+                    self.state_screen.clear()
 
                 if self.gl_mode_active and HAS_OPENGL:
                     self.screen.blit(self.offscreen_surface, (0, 0))
@@ -262,6 +294,39 @@ class AppManager:
             print(f"[APP] ERROR during render of '{self.current_app_name}': {type(e).__name__}: {e}")
             self.active = False
             return False
+
+    def _note_interaction(self):
+        self._last_interaction_ms = pygame.time.get_ticks()
+
+    def _state_screen_mode(self):
+        presentation = self._presentation()
+        if presentation.key == "FAULT":
+            return "fault"
+        if presentation.key == "WARNING":
+            return "warning"
+        if (
+            not self.launcher_open
+            and self.current_app_name == "eyes"
+            and presentation.key == "STANDBY"
+            and pygame.time.get_ticks() - self._last_interaction_ms >= self.idle_delay_ms
+        ):
+            return "idle"
+        return None
+
+    def _render_state_screen(self, surface, mode):
+        app = self.current_app
+        battery = getattr(app, "_battery", None)
+        telemetry = getattr(app, "telemetry", None)
+        if battery is None and telemetry is not None:
+            battery = getattr(telemetry, "battery", None)
+        connectivity = getattr(app, "_connectivity", "N/A")
+        self.state_screen.render(
+            surface,
+            mode,
+            self._presentation(),
+            battery=battery,
+            connectivity=connectivity,
+        )
 
     def _try_create_app(self, app_name):
         if app_name not in AVAILABLE_APPS:

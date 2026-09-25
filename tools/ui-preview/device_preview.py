@@ -94,6 +94,11 @@ def parse_args() -> argparse.Namespace:
         help="Open the TARS/95 touch launcher immediately for design review.",
     )
     parser.add_argument(
+        "--state-screen",
+        choices=("idle", "warning", "fault"),
+        help="Render a system-level idle or alert takeover above the selected app.",
+    )
+    parser.add_argument(
         "--list",
         action="store_true",
         help="List available app names and exit.",
@@ -327,6 +332,7 @@ def main() -> int:
 
     import pygame
     from modules.UI.module_ui_shell import Tars95Shell
+    from modules.UI.module_ui_state_screen import Tars95StateScreen
     from modules.UI.module_ui_state import resolve_presentation
 
     physical_width, physical_height = PHYSICAL_SIZES[args.size]
@@ -350,6 +356,7 @@ def main() -> int:
     app_index = app_names.index(args.app)
     app = load_app(args.app, logical_surface, logical_width, logical_height)
     shell = Tars95Shell(logical_width, logical_height)
+    state_screen = Tars95StateScreen(logical_width, logical_height)
     launcher_open = args.launcher and args.app != "boot"
     clock = pygame.time.Clock()
     frame_count = 0
@@ -455,7 +462,21 @@ def main() -> int:
             apply_state_to_app(app_names[app_index], app, preview_state)
             app.update()
             app.render()
-            if launcher_open:
+            if args.state_screen:
+                snapshot = preview_state.snapshot()
+                alert = args.state_screen if args.state_screen != "idle" else "none"
+                machine_state = "standby" if args.state_screen == "idle" else snapshot.machine_state
+                presentation = resolve_presentation(
+                    machine_state, alert, snapshot.connectivity,
+                )
+                state_screen.render(
+                    logical_surface,
+                    args.state_screen,
+                    presentation,
+                    battery=snapshot.battery,
+                    connectivity=snapshot.connectivity,
+                )
+            elif launcher_open:
                 snapshot = preview_state.snapshot()
                 presentation = resolve_presentation(
                     snapshot.machine_state, snapshot.alert, snapshot.connectivity,
