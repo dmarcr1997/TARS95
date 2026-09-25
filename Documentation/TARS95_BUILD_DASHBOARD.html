@@ -311,12 +311,30 @@
       .titlebar .unit, .task-button { display: none; }
     }
 
+    .build-panel { display: grid; gap: 12px; min-width: 0; }
+    .build-panel > *, .build-panel .window { min-width: 0; }
+    .build-panel[hidden] { display: none; }
+    .build-tabs { border: 2px outset white; }
+    .build-tabs button { min-height: 40px; font-weight: bold; }
+    button:focus-visible { outline: 3px solid var(--navy-hi); outline-offset: 3px; }
+    .ai-table { min-width: 650px; }
+    .board-wrap { overflow-x: auto; }
+    .ai-hardware { margin: 0; padding-left: 18px; }
+    .ai-hardware li { margin: 6px 0; }
+    [data-ai-state="next"] .status { color: #111; background: var(--amber); }
+    [data-ai-state="done"] .status { background: #08713b; }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }
   </style>
 </head>
 <body>
   <div class="crt" aria-hidden="true"></div>
   <main class="desktop">
+    <nav class="toolbar build-tabs" role="tablist" aria-label="Build dashboards">
+      <button id="tab-ui" class="active" role="tab" aria-selected="true" aria-controls="panel-ui" data-tab="ui">UI Build</button>
+      <button id="tab-ai" role="tab" aria-selected="false" aria-controls="panel-ai" tabindex="-1" data-tab="ai">AI Mechanics</button>
+      <span class="legend">TARS/95 // BUILD CONTROL</span>
+    </nav>
+    <div id="panel-ui" class="build-panel" role="tabpanel" aria-labelledby="tab-ui">
     <section class="window">
       <header class="titlebar">
         <span>TARS/95 Build Control — Project Directive</span>
@@ -336,8 +354,8 @@
           <div class="readout-row"><span>BRANCH</span><span>V3</span></div>
           <div class="readout-row"><span>BASELINE</span><span>7593f8c</span></div>
           <div class="readout-row"><span>SURFACES</span><span>PYGAME + WEB</span></div>
-          <div class="readout-row"><span><i class="lamp amber"></i>BUILD STATE</span><span>PORTRAIT SCALING READY</span></div>
-          <div class="readout-row"><span>NEXT ACTION</span><span>UI-020</span></div>
+          <div class="readout-row"><span><i class="lamp amber"></i>BUILD STATE</span><span>IDLE + FAULT READY</span></div>
+          <div class="readout-row"><span>NEXT ACTION</span><span>UI-021</span></div>
         </aside>
       </div>
       <div class="stats">
@@ -379,7 +397,7 @@
               <li>Use the Pi only at explicit integration gates, not as the everyday design workstation.</li>
             </ol>
           </div>
-          <div class="callout"><strong>Device preview:</strong> <code>.\.venv-ui-preview\Scripts\python.exe .\tools\ui-preview\device_preview.py --app eyes --size 480x320</code>. Use <code>--size 800x480</code> for the larger landscape display or <code>--size 480x800</code> for the installed portrait display; ESC quits, LEFT/RIGHT switches apps, and S/B/A/C cycles state fixtures. Mouse controls live beside the exact robot framebuffer.</div>
+          <div class="callout"><strong>Device preview:</strong> <code>.\.venv-ui-preview\Scripts\python.exe .\tools\ui-preview\device_preview.py --app eyes --size 480x320</code>. Use <code>--size 800x480</code> for the larger landscape display or <code>--size 480x800</code> for the installed portrait display; add <code>--state-screen idle</code>, <code>warning</code>, or <code>fault</code> to review system takeovers. ESC quits, LEFT/RIGHT switches apps, and S/B/A/C cycles state fixtures. Mouse controls live beside the exact robot framebuffer.</div>
           <div class="callout"><strong>Web preview:</strong> <code>.\.venv-ui-preview\Scripts\python.exe .\tools\ui-preview\web_preview.py --theme tars95</code>, then open <code>http://127.0.0.1:5095</code>. It is localhost-only, deterministic, and all robot write routes are no-ops. Run <code>--theme tars95 --check</code> for a fast contract test.</div>
           <div class="callout"><strong>Baseline set:</strong> <a href="review-baselines/UI-005/README.md">UI-005 review frames</a> records both robot sizes plus desktop and phone web viewports. Rebuild all four with <code>.\.venv-ui-preview\Scripts\python.exe .\tools\ui-preview\capture_baselines.py</code>.</div>
           <div class="callout"><strong>Full preview test:</strong> <code>.\tools\ui-preview\test.ps1</code> checks dependencies, fixtures, 23 web routes, Socket.IO, robot write no-ops, all five device apps at both sizes, real Chrome desktop/mobile renders, and baseline integrity.</div>
@@ -432,10 +450,10 @@
             <tr data-phase="2" data-state="done"><td class="id">UI-018</td><td><span class="status">Done</span></td><td class="task"><b>Rebuild locomotion controls</b><small>Direction, stop, neutral, and servo-disable actions are distinct and require deliberate input.</small></td><td>Device</td><td class="commit">feat(ui): rebuild locomotion controls</td></tr>
             <tr data-phase="2" data-state="done"><td class="id">UI-019</td><td><span class="status">Done</span></td><td class="task"><b>Restyle audio/comms diagnostics</b><small>Wake, speech, TTS, noise, and barge-in signals share the new state language without losing detail.</small></td><td>Device</td><td class="commit">feat(ui): restyle audio diagnostics</td></tr>
             <tr data-phase="2" data-state="done"><td class="id">UI-019R</td><td><span class="status">Done</span></td><td class="task"><b>Make device layouts responsive</b><small>Shared chrome, apps, launcher, and touch routing scale from the limiting axis at 480×320, 800×480, and the installed 480×800 portrait size without collisions.</small></td><td>Device</td><td class="commit">fix(ui): scale device layouts responsively</td></tr>
-            <tr data-phase="2" data-state="next"><td class="id">UI-020</td><td><span class="status">Next</span></td><td class="task"><b>Add TARS/95 idle and fault screens</b><small>Idle feels alive at low cost; warnings and faults override decoration with clear next actions.</small></td><td>Device</td><td class="commit">feat(ui): add idle and fault screens</td></tr>
+            <tr data-phase="2" data-state="done"><td class="id">UI-020</td><td><span class="status">Done</span></td><td class="task"><b>Add TARS/95 idle and fault screens</b><small>Idle feels alive at low cost; warnings and faults override decoration with clear next actions.</small></td><td>Device</td><td class="commit">feat(ui): add idle and fault screens</td></tr>
 
             <tr class="phase-row" data-phase="3"><td colspan="5">Phase 3 — Bring the remote web console into the same timeline</td></tr>
-            <tr data-phase="3" data-state="planned"><td class="id">UI-021</td><td><span class="status">Planned</span></td><td class="task"><b>Replace web shell and navigation chrome</b><small>Desktop and mobile navigation preserve every route/tab and clearly show connection status.</small></td><td>Web</td><td class="commit">feat(webui): add TARS95 console shell</td></tr>
+            <tr data-phase="3" data-state="next"><td class="id">UI-021</td><td><span class="status">Next</span></td><td class="task"><b>Replace web shell and navigation chrome</b><small>Desktop and mobile navigation preserve every route/tab and clearly show connection status.</small></td><td>Web</td><td class="commit">feat(webui): add TARS95 console shell</td></tr>
             <tr data-phase="3" data-state="planned"><td class="id">UI-022</td><td><span class="status">Planned</span></td><td class="task"><b>Restyle chat and voice controls</b><small>Streaming, speaker labels, uploads, mic states, errors, and generated media remain functional.</small></td><td>Web</td><td class="commit">feat(webui): restyle chat console</td></tr>
             <tr data-phase="3" data-state="planned"><td class="id">UI-023</td><td><span class="status">Planned</span></td><td class="task"><b>Restyle motion workspace</b><small>Joystick, sequences, arms, legs, emergency actions, and 3D preview remain understandable.</small></td><td>Web</td><td class="commit">feat(webui): restyle motion workspace</td></tr>
             <tr data-phase="3" data-state="planned"><td class="id">UI-024</td><td><span class="status">Planned</span></td><td class="task"><b>Restyle character/emotion workspace</b><small>Emotion choices, character editing, sprite feedback, and save states fit the visual system.</small></td><td>Web</td><td class="commit">feat(webui): restyle character workspace</td></tr>
@@ -506,9 +524,121 @@
             <div>UI-018</div><div>A dedicated Motion app adds hold-to-arm single-command authorization, distinct one-step directions, neutral return, emergency stop, and latched servo-off controls; the servo layer now honors stop cancellation, preview commands remain hardware-free, and all 23 smoke tests pass.</div><div>READY</div>
             <div>UI-019</div><div>Audio diagnostics now expose a six-stage MIC / WAKE / SPEECH / TTS / NOISE / BARGE status chain above a corrected full-width timeline; desktop review uses a clearly labeled deterministic fixture, Pi operation retains the live microphone path, and all 24 smoke tests pass with zero hardware attempts.</div><div>READY</div>
             <div>UI-019R</div><div>Responsive scale now follows the limiting axis instead of height alone, preventing the installed 480×800 portrait display from inflating chrome and controls to 2.5×; all nine device apps, the launcher, and touch routing render across three physical size contracts, and all 25 smoke tests pass with zero hardware attempts.</div><div>READY</div>
+            <div>UI-020</div><div>A shared state layer now gives Eyes a low-cost idle watch after 45 seconds and lets warning or fault conditions take over every app immediately; warning and fault screens keep the next safe action visible, route directly to Systems, remain responsive across all three physical size contracts, and all 26 smoke tests pass with zero hardware attempts.</div><div>READY</div>
           </div>
           <div class="callout">Update the status row and ledger in the same commit as the work it records. The dashboard is the project record, not a second implementation stream.</div>
         </div>
+      </section>
+    </div>
+    </div>
+
+    <div id="panel-ai" class="build-panel" role="tabpanel" aria-labelledby="tab-ai" hidden>
+      <section class="window">
+        <header class="titlebar"><span>AI Mechanics — Build Milestones</span><span class="unit">MVP // PLANNED</span></header>
+        <div class="hero-body">
+          <div class="mission">
+            <div class="eyebrow">This week's build // following + project notes</div>
+            <h1>Follow. Hold. Take a note.</h1>
+            <p>A practical assistant that follows one person slowly, stays when asked, and saves dictated project notes. Short spoken barks explain every meaningful following transition.</p>
+            <div class="hazard" aria-hidden="true"></div>
+          </div>
+          <aside class="readout">
+            <h2>Confirmed Hardware</h2>
+            <ul class="ai-hardware">
+              <li>Raspberry Pi 5 with active cooling</li>
+              <li>Pi Camera NoIR</li>
+              <li>Legged walking already reliable</li>
+              <li>No distance or obstacle sensors</li>
+            </ul>
+            <div class="readout-row"><span>IMPLEMENTATION</span><span>AI-001 COMPLETE</span></div>
+            <div class="readout-row"><span>NEXT ACTION</span><span>AI-002</span></div>
+          </aside>
+        </div>
+        <div class="pane"><div class="callout"><strong>MVP boundary:</strong> slow, supervised following of one person on a clear floor. Camera body size is only a rough spacing cue; it does not establish obstacle clearance. No room-to-room navigation or automatic pursuit after losing the target.</div></div>
+      </section>
+
+      <section class="window">
+        <header class="titlebar"><span>Milestone Gates — From Repo to Running Robot</span><span class="unit">0 / 5 COMPLETE</span></header>
+        <div class="board-wrap"><table class="board ai-table">
+          <thead><tr><th scope="col">Milestone</th><th scope="col">Build actions</th><th scope="col">Depends on</th><th scope="col">Done when</th></tr></thead>
+          <tbody>
+            <tr><td class="task"><b>M1 · Project notes work</b><span class="status">In progress</span></td><td>AI-001 done; AI-002 next</td><td>Local SQLite storage implemented. Voice integration pending.</td><td>Both inline and two-turn voice notes save to the correct project, can be retrieved/exported after restart, and report failures without claiming success.</td></tr>
+            <tr><td class="task"><b>M2 · Movement listens and stops</b><span class="status">Planned</span></td><td>AI-003–004</td><td>Existing reliable walking; required before powered following.</td><td>“Stay here” works with motors running, pending movement is cancelled, manual takeover works, and stopping behavior and latency are measured on TARS.</td></tr>
+            <tr><td class="task"><b>M3 · Following works without motor output</b><span class="status">Planned</span></td><td>AI-005–007 + AI-009</td><td>M2 control interface; actual Pi camera benchmark.</td><td>The tracker follows one target in front/back views; simulated control decisions and barks pass loss, ambiguity, stale-frame, stop, and timeout checks. No automatic restart after loss.</td></tr>
+            <tr><td class="task"><b>M4 · Following and notes work together</b><span class="status">Planned</span></td><td>AI-008 + supervised motion tuning</td><td>M1, M2, M3</td><td>TARS physically follows slowly on a clear floor, holds for a note, displays truthful status, and moves again only after an explicit follow command.</td></tr>
+            <tr><td class="task"><b>M5 · Pi MVP accepted</b><span class="status">Planned</span></td><td>AI-010</td><td>M4</td><td>The combined demo passes on Pi 5. Record software revision, configuration, calibrated tracking thresholds, follow duration, stop latency, test results, and remaining limitations so the setup is repeatable.</td></tr>
+          </tbody>
+        </table></div>
+        <div class="pane"><div class="callout">Each milestone closes only with its completion evidence. Ship M1 independently if tracking needs more tuning. Photos and recording are follow-on milestones, outside this week's required MVP.</div></div>
+      </section>
+
+      <div class="grid-2">
+        <section class="window">
+          <header class="titlebar"><span>Voice Contract.ini</span></header>
+          <div class="pane"><div class="screen">
+            <h3>Commands for this week</h3>
+            <ul>
+              <li><strong>“Hey TARS, follow me around for a bit.”</strong> Acquire one person in front, confirm, then begin a bounded following session.</li>
+              <li><strong>“Hey TARS, stay here.”</strong> Cancel following and pending movement. Remain stopped until an explicit restart.</li>
+              <li><strong>“Hey TARS, take this note for project X: use the shorter bracket.”</strong> Stop moving, persist the original transcript under project X, then confirm.</li>
+              <li><strong>“Hey TARS, take a note for project X.”</strong> Stop and ask “What's the note?” Capture the next utterance as note content.</li>
+            </ul>
+          </div><div class="callout">Wake-word detection suspends new follow movement while listening. Notes leave TARS stationary; “follow me” explicitly resumes. Dictated note text is data, not executable commands.</div></div>
+        </section>
+        <section class="window">
+          <header class="titlebar"><span>Scope + Decisions.log</span></header>
+          <div class="pane"><div class="screen">
+            <h3>Build on the existing robot</h3>
+            <ul>
+              <li>Reuse wake word, STT, skill discovery, camera capture, walking primitives, and the existing emergency-stop latch.</li>
+              <li>Benchmark the existing body detector from the actual camera height, including a person facing away.</li>
+              <li><strong>Integration issue:</strong> movement currently pauses STT in app.py. Listening during following must remain available.</li>
+              <li><strong>Storage implemented:</strong> local SQLite in src/data/project_notes/ with readable Markdown export. Notes retain the original transcript, stable IDs, and UTC timestamps. App sync can be added later.</li>
+              <li><strong>Later:</strong> attach existing photo captures to projects. “Record me” requires choosing audio, video, or ongoing transcription.</li>
+            </ul>
+          </div></div>
+        </section>
+      </div>
+
+      <section class="window">
+        <header class="titlebar"><span>Following Barks — State Transitions</span><span class="unit">STOP FIRST // SPEAK SECOND</span></header>
+        <div class="board-wrap"><table class="board ai-table">
+          <thead><tr><th scope="col">Event</th><th scope="col">Spoken bark</th><th scope="col">Required behavior</th></tr></thead>
+          <tbody>
+            <tr><td>Target acquired / start</td><td>“Following you.” / “Right behind you.”</td><td>Begin only after acquiring the target.</td></tr>
+            <tr><td>No target at start</td><td>“Step in front of me so I can follow you.”</td><td>Remain stationary.</td></tr>
+            <tr><td>Target lost</td><td>“I lost you.” / “Lost sight of you. Holding here.”</td><td>Stop, announce once, and wait for an explicit restart.</td></tr>
+            <tr><td>Identity ambiguous</td><td>“Lost track of which one is you. Holding here.”</td><td>Stop rather than switch to another person.</td></tr>
+            <tr><td>Stay here</td><td>“Holding here.” / “Staying put.”</td><td>Cancel following; no automatic restart.</td></tr>
+            <tr><td>Explicit restart</td><td>“Got you. Following.”</td><td>Reacquire before moving.</td></tr>
+            <tr><td>Note dictation begins</td><td>“Holding here. What's the note?”</td><td>Stop for dictation. For an inline note, save directly without asking again.</td></tr>
+            <tr><td>Session expires</td><td>“Holding here. Say ‘follow me’ when you're ready.”</td><td>Stop when the configured session duration ends.</td></tr>
+            <tr><td>Camera fails</td><td>“Camera's unavailable. Holding here.”</td><td>Stop and inhibit following until camera recovery and an explicit restart.</td></tr>
+          </tbody>
+        </table></div>
+        <div class="pane"><div class="screen"><h3>Bark delivery contract</h3><p>Local event-triggered phrases; no LLM round trip. Announce state changes once, use a cooldown against detection flicker, and cache speech audio where practical. Prioritize stop/fault barks and discard obsolete queued phrases. Audio failure must never delay stopping.</p></div></div>
+      </section>
+
+      <section class="window">
+        <header class="titlebar"><span>AI Mechanics Workboard</span><span class="unit">AI-001 DONE // AI-002 NEXT</span></header>
+        <div class="board-wrap"><table class="board ai-table">
+          <thead><tr><th scope="col">ID</th><th scope="col">State</th><th scope="col">Action + acceptance check</th><th scope="col">Integration</th></tr></thead>
+          <tbody>
+            <tr data-ai-state="done"><td class="id">AI-001</td><td><span class="status">Done</span></td><td class="task"><b>Add durable project note storage</b><small>Implemented atomic SQLite saves, project matching, note retrieval, and atomic Markdown snapshots with generated filenames. Seven acceptance tests pass: fresh-process persistence, project isolation, path-safe literal export, 40 concurrent writes, invalid input, save rollback, and failed-export recovery.</small></td><td><a href="../src/modules/module_project_notes.py">module_project_notes.py</a><br><a href="../tests/test_project_notes.py">Acceptance tests</a></td></tr>
+            <tr data-ai-state="next"><td class="id">AI-002</td><td><span class="status">Next</span></td><td class="task"><b>Add inline and two-turn note commands</b><small>Handle missing project/content, cancellation, timeout, and duplicate delivery. Say “Saved to project X” only after a successful write; report write failures honestly.</small></td><td>New project_notes skill + module_main.py</td></tr>
+            <tr data-ai-state="planned"><td class="id">AI-003</td><td><span class="status">Planned</span></td><td class="task"><b>Coordinate motion ownership and stopping</b><small>One locomotion owner across follow, voice, controller, and UI. Manual takeover cancels follow. Clear queued actions on stop; validate a stable normal stop separately from emergency servo-off.</small></td><td>Motion coordinator + servo / movement modules</td></tr>
+            <tr data-ai-state="planned"><td class="id">AI-004</td><td><span class="status">Planned</span></td><td class="task"><b>Keep listening available during following</b><small>Replace unconditional movement-time STT pause for this mode. Wake suspends new motion; route “stay here” before LLM processing. Measure recognition and stop latency with motors running.</small></td><td>app.py + module_stt.py + module_main.py</td></tr>
+            <tr data-ai-state="planned"><td class="id">AI-005</td><td><span class="status">Planned</span></td><td class="task"><b>Expose fresh frames and benchmark body tracking</b><small>Reuse the camera owner; timestamp frames. Measure detection latency and target continuity on Pi 5 at robot height, including back-facing views. Stale frames cannot authorize movement.</small></td><td>module_ui_camera.py + module_ui_detections.py</td></tr>
+            <tr data-ai-state="planned"><td class="id">AI-006</td><td><span class="status">Planned</span></td><td class="task"><b>Build the following state machine</b><small>Acquiring, following, paused, lost, and stopped states. Lock one target; turn, take one bounded action, then reassess. Stop on ambiguity, stale frames, loss, or session expiry. Never silently reacquire and resume.</small></td><td>New follower service + follow skill</td></tr>
+            <tr data-ai-state="planned"><td class="id">AI-007</td><td><span class="status">Planned</span></td><td class="task"><b>Add event-driven spoken barks</b><small>Implement the bark table with transition deduplication, cooldown, cached speech where practical, and stop/fault priority. Repeated lost frames produce one bark; stopping does not wait for speech.</small></td><td>Follower events + TTS</td></tr>
+            <tr data-ai-state="planned"><td class="id">AI-008</td><td><span class="status">Planned</span></td><td class="task"><b>Connect notes, following, and visible status</b><small>Show acquiring / following / holding / lost and note-saving success or failure. Dictation keeps motion paused; completing a note cannot restart follow.</small></td><td>Shared state + device / web status</td></tr>
+            <tr data-ai-state="planned"><td class="id">AI-009</td><td><span class="status">Planned</span></td><td class="task"><b>Validate control logic without motors</b><small>Exercise recorded/fake detections: target crossing, loss, frozen frames, camera failure, repeated start/stop, session timeout, and manual takeover. Assert that no further movement is queued after stop.</small></td><td>Hardware-free tests</td></tr>
+            <tr data-ai-state="planned"><td class="id">AI-010</td><td><span class="status">Planned</span></td><td class="task"><b>Run the combined Pi demo</b><small>Follow slowly across a clear room, stop on command and target loss, bark once, save a note to the correct project, restart the app, and retrieve the note. Record tracking, stopping, CPU, and thermal results.</small></td><td>Pi 5 + actual camera / microphones</td></tr>
+            <tr data-ai-state="later"><td class="id">AI-011</td><td><span class="status">Later</span></td><td class="task"><b>Attach photos to project notes</b><small>Reuse take_photo and link saved media to a project. Confirm successful capture before announcing it.</small></td><td>Existing take_photo skill</td></tr>
+            <tr data-ai-state="later"><td class="id">AI-012</td><td><span class="status">Later</span></td><td class="task"><b>Define “record me”</b><small>Choose audio, video, or continuous transcription; define explicit start/stop, recording indication, duration/storage limits, and project association before implementation.</small></td><td>Scope decision pending</td></tr>
+          </tbody>
+        </table></div>
+        <div class="pane"><div class="callout"><strong>AI-001 evidence:</strong> run <code>python -m unittest discover -s tests -p test_project_notes.py -v</code> from the repository root. Seven tests pass using disposable storage only; no robot imports or hardware access. The storage API is ready; spoken note commands remain AI-002 and Pi acceptance remains M5.</div><div class="callout"><strong>Delivery sequence:</strong> notes → motion/listening coordination → tracking and barks → combined Pi demo. Reliable walking is confirmed; perception and listening during motor noise are the remaining hardware integration unknowns.</div></div>
       </section>
     </div>
   </main>
@@ -520,7 +650,36 @@
   </footer>
 
   <script>
-    const rows = [...document.querySelectorAll('tr[data-state]')];
+    const tabs = [...document.querySelectorAll('[data-tab]')];
+    function selectTab(name, focus = false) {
+      tabs.forEach((tab) => {
+        const selected = tab.dataset.tab === name;
+        tab.classList.toggle('active', selected);
+        tab.setAttribute('aria-selected', String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+        document.getElementById(tab.getAttribute('aria-controls')).hidden = !selected;
+        if (selected && focus) tab.focus();
+      });
+    }
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => {
+        selectTab(tab.dataset.tab);
+        history.replaceState(null, '', tab.dataset.tab === 'ai' ? '#ai-mechanics' : '#ui-build');
+      });
+      tab.addEventListener('keydown', (event) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 :
+          (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+        tabs[next].click();
+        tabs[next].focus();
+      });
+    });
+    function selectHashTab() { selectTab(location.hash === '#ai-mechanics' ? 'ai' : 'ui'); }
+    window.addEventListener('hashchange', selectHashTab);
+    selectHashTab();
+
+    const rows = [...document.querySelectorAll('#panel-ui tr[data-state]')];
     const done = rows.filter((row) => row.dataset.state === 'done').length;
     document.getElementById('completeCount').textContent = done;
     document.getElementById('totalCount').textContent = rows.length;
