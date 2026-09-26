@@ -52,7 +52,13 @@ class RobotMotionBackend:
         from modules import module_servoctl as servoctl
 
         if servoctl.pca is None:
-            raise RuntimeError("SERVO CONTROLLER N/A")
+            # Touch authorization is independent of gamepad/voice settings.
+            # Initialize only the PWM driver here: initialize_servos() also
+            # moves to neutral, which is not the command the user selected.
+            print("[MOTION] Initializing servo controller for touch command", flush=True)
+            if not servoctl.initialize_pca9685():
+                servoctl.pca = None
+                raise RuntimeError("SERVO CONTROLLER N/A")
         servoctl.clear_emergency_stop()
         function_name = self._ACTIONS[action]
         getattr(movements, function_name)()
@@ -416,6 +422,7 @@ class MotionApp:
                 self.motion_backend.run(action)
             except Exception as exc:
                 message = str(exc).strip() or type(exc).__name__
+                print(f"[MOTION] {action} failed: {message}", flush=True)
                 self._worker_error = message.upper()[:27]
 
         self._worker = threading.Thread(target=run, daemon=True, name=f"ui-motion-{action}")
