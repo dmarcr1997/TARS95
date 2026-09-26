@@ -70,7 +70,7 @@ class RobotMotionBackend:
 
 
 class MotionApp:
-    """Single-command motion authorization with always-available stop actions."""
+    """Persistent touch authorization with always-available disarm and stop."""
 
     ARM_HOLD_MS = 700
 
@@ -135,10 +135,11 @@ class MotionApp:
             self._worker = None
             self._busy = False
             if self._worker_error:
+                self._armed = False
                 self._status = self._worker_error
                 self._worker_error = None
             elif not self._servos_disabled and not self._status.startswith("STOP"):
-                self._status = "COMMAND COMPLETE // LOCKED"
+                self._status = "ARMED // READY" if self._armed else "OUTPUT LOCKED"
 
     def handle_event(self, event: pygame.event.Event) -> bool:
         if event.type not in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP):
@@ -154,6 +155,9 @@ class MotionApp:
         )
 
         if event.type == pygame.MOUSEBUTTONDOWN:
+            if target == "arm" and self._armed:
+                self._request_stop(disable=False)
+                return True
             if target == "arm" and not self._busy:
                 self._arm_started_ms = pygame.time.get_ticks()
                 self._status = "HOLDING // KEEP PRESSURE"
@@ -168,7 +172,7 @@ class MotionApp:
                 if self._armed and not self._busy and not self._servos_disabled:
                     self._dispatch(target)
                 else:
-                    self._status = "LOCKED // HOLD ARM"
+                    self._status = "COMMAND ACTIVE // WAIT" if self._busy else "LOCKED // HOLD ARM"
                 return True
 
         if event.type == pygame.MOUSEBUTTONUP and self._arm_started_ms is not None:
@@ -177,7 +181,7 @@ class MotionApp:
             if target == "arm" and elapsed >= self.ARM_HOLD_MS:
                 self._armed = True
                 self._servos_disabled = False
-                self._status = "ARMED // ONE COMMAND"
+                self._status = "ARMED // READY"
             else:
                 self._armed = False
                 self._status = "HOLD TO ARM // 0.7 SEC"
@@ -239,14 +243,14 @@ class MotionApp:
     def _draw_vector_panel(self, rect: pygame.Rect, scale: float) -> None:
         draw_label(
             self.screen,
-            "MOTION VECTOR // SINGLE STEP",
+            "MOTION VECTOR // TOUCH CONTROL",
             (rect.left + scaled(9, scale), rect.top + scaled(8, scale)),
             size=scaled(8, scale),
             color=CAUTION_AMBER,
         )
         draw_label(
             self.screen,
-            "ARM AUTHORIZATION EXPIRES AFTER ONE COMMAND",
+            "STAYS ARMED UNTIL DISARM OR STOP",
             (rect.left + scaled(9, scale), rect.top + scaled(21, scale)),
             size=scaled(6, scale),
             color=PANEL_MUTED,
@@ -321,12 +325,12 @@ class MotionApp:
         )
         pygame.draw.rect(self.screen, CHROME_FACE, arm_rect)
         pygame.draw.rect(self.screen, CHROME_SHADOW, arm_rect, scaled(1, scale))
-        arm_label = "RELEASE TO ARM" if self._arm_started_ms is not None else "HOLD TO ARM"
+        arm_label = "DISARM" if self._armed else "RELEASE TO ARM" if self._arm_started_ms is not None else "HOLD TO ARM"
         label = load_font(scaled(10, scale), "pixel").render(arm_label, True, CHROME_SHADOW)
         self.screen.blit(label, label.get_rect(centerx=arm_rect.centerx, top=arm_rect.top + scaled(9, scale)))
         draw_label(
             self.screen,
-            "0.7 SEC // ONE CMD",
+            "TAP TO STOP" if self._armed else "HOLD 0.7 SEC",
             (arm_rect.left + scaled(18, scale), arm_rect.top + scaled(28, scale)),
             size=scaled(7, scale),
             color=CHROME_SHADOW,
@@ -405,7 +409,6 @@ class MotionApp:
         self.screen.blit(detail_image, detail_image.get_rect(centerx=rect.centerx, top=y + title_image.get_height() + scaled(2, scale)))
 
     def _dispatch(self, action: str) -> None:
-        self._armed = False
         self._busy = True
         self._last_action = {
             "forward": "FWD",

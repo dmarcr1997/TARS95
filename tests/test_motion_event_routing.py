@@ -71,7 +71,15 @@ for display_width, display_height in ((480, 320), (480, 800)):
     app._worker.join(timeout=1)
     app.update()
     assert backend.commands == ['forward']
-    assert not app._armed, 'Authorization expires after one command'
+    assert app._armed, 'Authorization persists across commands'
+    deliver(pygame.MOUSEBUTTONDOWN, app._targets['forward'].center, 4000)
+    app._worker.join(timeout=1)
+    app.update()
+    assert backend.commands == ['forward', 'forward']
+    deliver(pygame.MOUSEBUTTONDOWN, arm, 4100)
+    assert not app._armed, 'Tap DISARM must lock output immediately'
+    deliver(pygame.MOUSEBUTTONDOWN, app._targets['forward'].center, 4200)
+    assert backend.commands.count('forward') == 2
     apps.deactivate()
 
 releases = []

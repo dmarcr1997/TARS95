@@ -520,30 +520,34 @@ assert app.handle_event(pygame.event.Event(
 app._worker.join(timeout=1)
 app.update()
 assert backend.commands == ['forward']
-assert not app._armed
+assert app._armed
 assert not app._busy
 
-# Neutral is a motion command and therefore needs a fresh authorization.
+# Additional commands reuse authorization until explicitly stopped.
 assert app.handle_event(pygame.event.Event(
     pygame.MOUSEBUTTONDOWN, pos=logical('neutral'), button=1,
 ))
-assert backend.commands == ['forward']
+app._worker.join(timeout=1)
+app.update()
+assert backend.commands == ['forward', 'neutral']
+assert app._armed
 
 # Stop and servo-disable remain available while output is locked.
 assert app.handle_event(pygame.event.Event(
     pygame.MOUSEBUTTONDOWN, pos=logical('stop'), button=1,
 ))
 deadline = time.monotonic() + 1
-while len(backend.commands) < 2 and time.monotonic() < deadline:
+while len(backend.commands) < 3 and time.monotonic() < deadline:
     time.sleep(0.01)
 assert backend.commands[-1] == 'stop'
 assert not app._servos_disabled
+assert not app._armed
 
 assert app.handle_event(pygame.event.Event(
     pygame.MOUSEBUTTONDOWN, pos=logical('disable'), button=1,
 ))
 deadline = time.monotonic() + 1
-while len(backend.commands) < 3 and time.monotonic() < deadline:
+while len(backend.commands) < 4 and time.monotonic() < deadline:
     time.sleep(0.01)
 assert backend.commands[-1] == 'stop'
 assert app._servos_disabled
