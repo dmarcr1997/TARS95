@@ -788,7 +788,12 @@ class UIManager(threading.Thread):
                                 self.terminal_system.handle_mouse_down(logical_pos)
                                 self.terminal_system.handle_click(logical_pos)
                     elif event.type == pygame.MOUSEBUTTONUP:
-                        if not self.show_app and self.terminal_system:
+                        if self.show_app:
+                            if self.app_manager and self.app_manager.is_active():
+                                logical_pos = self._transform_mouse_pos(event.pos, display_width, display_height)
+                                app_event = pygame.event.Event(pygame.MOUSEBUTTONUP, pos=logical_pos, button=event.button)
+                                self.app_manager.handle_event(app_event)
+                        elif self.terminal_system:
                             self.terminal_system.handle_mouse_up()
                     elif event.type == pygame.MOUSEMOTION:
                         if self.show_app:
