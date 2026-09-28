@@ -917,6 +917,89 @@ pygame.quit()
 
 
 class BrowserRenderTests(unittest.TestCase):
+    def test_chat_controls_streaming_uploads_voice_and_errors(self) -> None:
+        with sync_playwright() as playwright:
+            browser, _channel = launch_installed_browser(playwright)
+            try:
+                for width, height in ((1440, 900), (390, 844)):
+                    page = browser.new_page(viewport={"width": width, "height": height}, reduced_motion="reduce")
+                    errors = []
+                    page.on("pageerror", lambda error: errors.append(str(error)))
+                    page.goto(f"http://{HOST}:{self.port}/", wait_until="networkidle")
+                    page.add_style_tag(content='.preview-console, .preview-readout { display: none !important; }')
+                    page.wait_for_function('window.socket && window.socket.connected')
+                    page.locator('#prompt').fill('Report communications status.')
+                    self.assertEqual('SEND', page.locator('#voiceButtonLabel').inner_text())
+                    page.get_by_role('button', name='Send', exact=True).click()
+                    page.wait_for_function("document.querySelectorAll('.msg-bot .response-text').length > 0 && document.querySelector('.msg-bot .response-text').textContent.includes('PREVIEW ACKNOWLEDGED:')")
+                    self.assertEqual('READY', page.locator('#chatActivity').inner_text())
+                    self.assertEqual(0, page.locator('.is-typing').count())
+                    self.assertTrue(page.locator('.msg-bot .msg-name').last.inner_text())
+
+                    page.locator('#imageUpload').set_input_files(str(REPO_ROOT / 'src/www/static/imgs/char.png'))
+                    page.locator('#imagePreviewContainer').wait_for(state='visible')
+                    page.get_by_role('button', name='Remove image').click()
+                    self.assertEqual('', page.locator('#imageUpload').input_value())
+                    page.evaluate("""() => {
+                        const originalFetch = window.fetch;
+                        window.fetch = (url, options) => {
+                            if (url === '/process_llm') window.sentFileName = options.body.get('file')?.name;
+                            return originalFetch(url, options);
+                        };
+                    }""")
+                    page.locator('#imageUpload').set_input_files(str(REPO_ROOT / 'src/www/static/imgs/char.png'))
+                    with page.expect_request('**/process_llm') as request:
+                        page.get_by_role('button', name='Send', exact=True).click()
+                    self.assertEqual('char.png', page.evaluate('window.sentFileName'))
+                    self.assertIn('multipart/form-data', request.value.headers['content-type'])
+                    page.wait_for_function("document.querySelectorAll('.msg-bot .response-text').length === 2")
+                    self.socketio.emit('bot_media', {'type': 'image', 'url': '/static/imgs/char.png', 'label': 'Camera reference'})
+                    page.get_by_alt_text('Camera reference').wait_for()
+                    self.socketio.emit('update_last_user_speaker', {'speaker': 'Operator'})
+                    page.wait_for_function("Array.from(document.querySelectorAll('.msg-row-user .msg-name')).at(-1).textContent === 'Operator'")
+
+                    page.get_by_role('button', name='Unmute audio', exact=True).click()
+                    self.assertEqual('AUDIO ON', page.locator('#audioButtonLabel').inner_text())
+                    page.get_by_role('button', name='Mute audio', exact=True).click()
+                    self.assertEqual('MUTED', page.locator('#audioButtonLabel').inner_text())
+                    page.evaluate("() => { navigator.mediaDevices.getUserMedia = async () => { throw new DOMException('Denied', 'NotAllowedError'); }; }")
+                    page.get_by_role('button', name='Voice mode', exact=True).click()
+                    page.wait_for_function("document.getElementById('chatActivity').textContent.includes('MIC UNAVAILABLE')")
+                    # A silent synthetic stream exercises the real voice UI without microphone access.
+                    page.evaluate("""() => {
+                        window.testAudio = new AudioContext();
+                        window.testMic = testAudio.createMediaStreamDestination().stream;
+                        navigator.mediaDevices.getUserMedia = async () => testMic;
+                    }""")
+                    page.get_by_role('button', name='Voice mode', exact=True).click()
+                    page.get_by_role('button', name='Stop voice', exact=True).wait_for()
+                    self.assertEqual('STOP MIC', page.locator('#voiceButtonLabel').inner_text())
+                    self.assertTrue(page.locator('#voiceOverlay').is_visible())
+                    page.get_by_role('button', name='Stop voice', exact=True).click()
+                    self.assertTrue(page.evaluate("testMic.getTracks().every(track => track.readyState === 'ended')"))
+                    page.evaluate('testAudio.close()')
+
+                    page.locator('#avatarHeader').focus()
+                    page.keyboard.press('Enter')
+                    self.assertEqual('false', page.locator('#avatarHeader').get_attribute('aria-expanded'))
+                    page.keyboard.press('Enter')
+                    self.assertEqual('true', page.locator('#avatarHeader').get_attribute('aria-expanded'))
+                    self.assertEqual('none', page.locator('#backgroundImage').evaluate('el => getComputedStyle(el).filter'))
+                    self.assertLessEqual(page.locator('#chatInputBar').bounding_box()['y'] + page.locator('#chatInputBar').bounding_box()['height'], height + 1)
+                    (REPO_ROOT / 'tmp').mkdir(exist_ok=True)
+                    page.screenshot(path=str(REPO_ROOT / 'tmp' / f'ui022-{width}.png'))
+
+                    page.route('**/process_llm', lambda route: route.fulfill(status=503, body='Unavailable'))
+                    page.locator('#prompt').fill('Test failed request')
+                    page.locator('#prompt').press('Enter')
+                    page.wait_for_function("document.getElementById('chatActivity').textContent.includes('SEND FAILED')")
+                    page.wait_for_timeout(1100)
+                    self.assertEqual(0, page.locator('.is-typing').count())
+                    self.assertEqual([], errors)
+                    page.close()
+            finally:
+                browser.close()
+
     def test_shell_navigation_connection_and_resize(self) -> None:
         with sync_playwright() as playwright:
             browser, _channel = launch_installed_browser(playwright)
@@ -961,7 +1044,7 @@ class BrowserRenderTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.app, _socketio = create_app(theme="tars95", port=0)
+        cls.app, cls.socketio = create_app(theme="tars95", port=0)
         cls.server = make_server(HOST, 0, cls.app, threaded=True, request_handler=QuietRequestHandler)
         cls.port = cls.server.server_port
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)

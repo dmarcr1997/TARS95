@@ -2,10 +2,14 @@
   <div class="chat-wrap">
 
     <!-- Avatar (click to toggle) -->
-    <div class="avatar-header" id="avatarHeader">
+    <div class="avatar-header" id="avatarHeader" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle character panel">
       <img id="backgroundImage" src="" alt="Avatar">
       <div class="avatar-glow"></div>
+      <div class="t95-chat-identity"><span>COMMUNICATIONS / 01</span><strong>{{ char_name }}</strong><small>TEXT + VOICE INTERFACE</small></div>
+      <span class="t95-avatar-hint">CHARACTER PANEL / TOGGLE</span>
     </div>
+
+    <div class="t95-chat-log-header"><span>CONVERSATION LOG</span><span id="chatActivity" role="status" aria-live="polite">READY</span></div>
 
     <!-- Messages -->
     <div class="chat-body" id="chatBody">
@@ -37,14 +41,14 @@
     <div class="chat-input-bar" id="chatInputBar">
       <div class="input-pill">
         <button id="uploadImageButton" aria-label="Upload image"><i class="bi bi-plus-lg"></i></button>
-        <input type="text" id="prompt" placeholder="Send a message…" autocomplete="off" />
+        <input type="text" id="prompt" aria-label="Message" placeholder="Send a message…" autocomplete="off" />
         <div class="voice-overlay" id="voiceOverlay" style="display:none;">
           <canvas id="voiceWaveform" height="40"></canvas>
-          <span class="voice-status" id="voiceStatus"></span>
+          <span class="voice-status" id="voiceStatus" role="status" aria-live="polite"></span>
         </div>
       </div>
-      <button id="muteButton"       aria-label="Mute"><i class="bi bi-volume-mute-fill"></i></button>
-      <button id="voiceModeButton"  aria-label="Voice mode"><i class="bi bi-mic-fill"></i></button>
+      <button id="muteButton" aria-label="Unmute audio" aria-pressed="true"><i class="bi bi-volume-mute-fill"></i><span class="t95-control-label" id="audioButtonLabel">MUTED</span></button>
+      <button id="voiceModeButton" aria-label="Voice mode"><i class="bi bi-mic-fill"></i><span class="t95-control-label" id="voiceButtonLabel">VOICE</span></button>
     </div>
 
   </div>

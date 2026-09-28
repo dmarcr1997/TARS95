@@ -92,6 +92,7 @@
 
 /* ── RESET ── */
 .t95-shell-header, .t95-workspace-bar, .t95-nav-label, .t95-connection-label { display: none; }
+.t95-chat-identity, .t95-avatar-hint, .t95-chat-log-header, .t95-control-label { display: none; }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 

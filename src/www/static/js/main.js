@@ -308,6 +308,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const icon = this.querySelector('i');
     isMuted = !isMuted;
     audioPlayer.muted = isMuted;
+    this.setAttribute('aria-label', isMuted ? 'Unmute audio' : 'Mute audio');
+    this.setAttribute('aria-pressed', String(isMuted));
+    $('audioButtonLabel').textContent = isMuted ? 'MUTED' : 'AUDIO ON';
     if (isMuted) {
       icon.className = 'bi bi-volume-mute-fill';
       stop_talking();
@@ -430,6 +433,20 @@ function _playNextFromQueue() {
 // ── CHAT ────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
   let selectedImageFile = null;
+  let typingTimer = null;
+  function chatStatus(text, error = false) {
+    $('chatActivity').textContent = text;
+    $('chatActivity').classList.toggle('is-error', error);
+  }
+  function addBotSpeaker(row) {
+    const meta = document.createElement('div');
+    meta.className = 'msg-meta';
+    const name = document.createElement('span');
+    name.className = 'msg-name';
+    name.textContent = window.APP_CONFIG?.charName || 'TARS';
+    meta.appendChild(name);
+    row.prepend(meta);
+  }
 
   // Image upload
   $('uploadImageButton').addEventListener('click', () => $('imageUpload').click());
@@ -451,6 +468,7 @@ document.addEventListener('DOMContentLoaded', function () {
   });
   $('removeImageButton').addEventListener('click', () => {
     selectedImageFile = null;
+    $('imageUpload').value = '';
     $('imagePreviewContainer').style.display = 'none';
     $('imagePreview').src = '';
     updateMicSendButton();
@@ -464,6 +482,7 @@ document.addEventListener('DOMContentLoaded', function () {
   let _streamActive = false;
 
   socket.on('bot_stream_start', () => {
+    chatStatus('RECEIVING');
     _dbg('[DEBUG] bot_stream_start received');
     removeTypingMessage();
     if (_streamRow) { _streamRow = null; _streamText = null; }
@@ -486,6 +505,7 @@ document.addEventListener('DOMContentLoaded', function () {
       _streamRow = document.createElement('div');
       _streamRow.className = 'msg-row msg-bot';
       _streamRow.innerHTML = '<div class="msg-bubble msg-bubble-bot"><div class="response-text"></div></div>';
+      addBotSpeaker(_streamRow);
       chatBody.appendChild(_streamRow);
       _streamText = _streamRow.querySelector('.response-text');
     }
@@ -563,11 +583,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     row.innerHTML = '<div class="msg-bubble msg-bubble-bot">' + inner + '</div>';
+    addBotSpeaker(row);
     chatBody.appendChild(row);
     chatBody.scrollTop = chatBody.scrollHeight;
   });
 
   socket.on('bot_message', d => {
+    chatStatus('READY');
     _dbg('[DEBUG] bot_message | audio_streamed:', d.audio_streamed, '| hasStreamRow:', !!_streamRow, '| msgLen:', (d.message||'').length);
     removeTypingMessage();
     _streamActive = false;
@@ -632,6 +654,8 @@ document.addEventListener('DOMContentLoaded', function () {
     window.setConsoleConnection('online');
   });
   socket.on('disconnect', () => {
+    chatStatus('LINK LOST', true);
+    removeTypingMessage();
     window.setConsoleConnection('offline');
     _audioQueue.length = 0;
     _audioDone = false;
@@ -670,16 +694,24 @@ document.addEventListener('DOMContentLoaded', function () {
     $('imagePreviewContainer').style.display = 'none';
     $('imagePreview').src = '';
     updateMicSendButton();
-    setTimeout(() => displayBotMessage('', true), 1000);
+    typingTimer = setTimeout(() => displayBotMessage('', true), 1000);
   }
 
   if (prompt) prompt.addEventListener('keyup', e => { if (e.key === 'Enter') sendMessage(); });
 
   function sendUserMessage(message, file) {
+    chatStatus('SENDING');
     const fd = new FormData();
     fd.append('message', message);
     if (file) fd.append('file', file);
-    fetch('/process_llm', { method: 'POST', body: fd }).catch(console.error);
+    fetch('/process_llm', { method: 'POST', body: fd }).then(response => {
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+    }).catch(() => {
+      removeTypingMessage();
+      chatStatus('SEND FAILED / TRY AGAIN', true);
+      _botResponding = false;
+      if (window.showToast) showToast('Message could not be sent. Check the link and try again.', 'error');
+    });
   }
 
   function displayBotMessage(message, isTyping = false, audioStreamed = false) {
@@ -699,12 +731,14 @@ document.addEventListener('DOMContentLoaded', function () {
       </div>`;
     }
 
+    addBotSpeaker(row);
     chatBody.appendChild(row);
     chatBody.scrollTop = chatBody.scrollHeight;
     if (!isTyping && !audioStreamed) startAudioStream();
   }
 
   function removeTypingMessage() {
+    clearTimeout(typingTimer);
     document.querySelectorAll('.is-typing').forEach(el => el.remove());
   }
 
@@ -715,7 +749,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const name = speakerName || window.APP_CONFIG?.userName || 'User';
     const meta = document.createElement('div');
     meta.className = 'msg-meta msg-meta-user';
-    meta.innerHTML = `<span class="msg-name">${name}</span>`;
+    const speaker = document.createElement('span');
+    speaker.className = 'msg-name';
+    speaker.textContent = name;
+    meta.appendChild(speaker);
     row.appendChild(meta);
     const bubble = document.createElement('div');
     bubble.className = 'msg-bubble msg-bubble-user';
@@ -747,9 +784,17 @@ document.addEventListener('DOMContentLoaded', function () {
   const avatarHeader = document.querySelector('.avatar-header');
   if (avatarHeader) {
     if (localStorage.getItem('avatarHidden') === '1') avatarHeader.classList.add('collapsed');
+    avatarHeader.setAttribute('aria-expanded', String(!avatarHeader.classList.contains('collapsed')));
     avatarHeader.addEventListener('click', () => {
       avatarHeader.classList.toggle('collapsed');
       localStorage.setItem('avatarHidden', avatarHeader.classList.contains('collapsed') ? '1' : '0');
+      avatarHeader.setAttribute('aria-expanded', String(!avatarHeader.classList.contains('collapsed')));
+    });
+    avatarHeader.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        avatarHeader.click();
+      }
     });
   }
 
@@ -786,6 +831,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function updateMicSendButton() {
     if (!voiceModeBtn || !prompt || voiceActive) return;
     const hasText = prompt.value.trim().length > 0 || selectedImageFile;
+    $('voiceButtonLabel').textContent = hasText ? 'SEND' : 'VOICE';
     if (hasText && !isSendMode) {
       isSendMode = true;
       voiceModeBtn.querySelector('i').className = 'bi bi-send-fill';
@@ -877,7 +923,7 @@ document.addEventListener('DOMContentLoaded', function () {
     voiceStatus.textContent = 'Processing...';
     displayUserMessage(text);
     sendUserMessage(text);
-    setTimeout(() => displayBotMessage('', true), 500);
+    typingTimer = setTimeout(() => displayBotMessage('', true), 500);
   });
 
   function _sendAudioToServer(chunks) {
@@ -915,6 +961,7 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     } catch(e) {
       _dbg('[MIC] getUserMedia FAILED:', e.name, e.message);
+      chatStatus('MIC UNAVAILABLE / CHECK PERMISSION', true);
       if (window.showToast) showToast('Microphone access denied', 'error');
       return;
     }
@@ -1009,6 +1056,8 @@ document.addEventListener('DOMContentLoaded', function () {
     voiceModeBtn.classList.add('voice-active');
     voiceModeBtn.querySelector('i').className = 'bi bi-stop-circle-fill';
     voiceModeBtn.setAttribute('aria-label', 'Stop voice');
+    $('voiceButtonLabel').textContent = 'STOP MIC';
+    chatStatus('VOICE SESSION');
     voiceStatus.textContent = 'Listening...';
 
     // Periodic health check — auto-resume AudioContext if it gets suspended
@@ -1026,6 +1075,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function stopVoiceMode() {
+    chatStatus('READY');
     _dbg('[MIC] stopVoiceMode called');
     voiceActive = false;
     _micRecording = false;
