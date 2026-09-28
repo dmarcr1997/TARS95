@@ -52,8 +52,7 @@
     readout.className = `preview-readout is-${presentation.key}`;
     readout.style.setProperty('--preview-state-signal', presentation.color);
 
-    const connDot = byId('connDot');
-    if (connDot) connDot.className = current.connectivity === 'offline' ? 'conn-dot disconnected' : 'conn-dot';
+    window.setConsoleConnection(current.connectivity, true);
   }
 
   async function update(changes) {

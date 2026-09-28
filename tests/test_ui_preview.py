@@ -917,6 +917,48 @@ pygame.quit()
 
 
 class BrowserRenderTests(unittest.TestCase):
+    def test_shell_navigation_connection_and_resize(self) -> None:
+        with sync_playwright() as playwright:
+            browser, _channel = launch_installed_browser(playwright)
+            try:
+                page = browser.new_page(viewport={"width": 1440, "height": 900}, reduced_motion="reduce")
+                errors = []
+                page.on("pageerror", lambda error: errors.append(str(error)))
+                page.goto(f"http://{HOST}:{self.port}/", wait_until="networkidle")
+                page.locator("#previewConsole").evaluate("el => el.classList.add('is-collapsed')")
+                tabs = ("chat", "motion", "emotions", "dashboard", "config")
+                for width, height in ((1440, 900), (390, 844), (844, 390), (320, 640)):
+                    page.set_viewport_size({"width": width, "height": height})
+                    mobile = width <= 768 or (width <= 900 and height <= 500)
+                    for index, tab in enumerate(tabs):
+                        selector = f"[data-tab-index='{index}']" if mobile else f"#{tab}-tab"
+                        page.locator(selector).click()
+                        page.wait_for_function("id => document.getElementById(id).classList.contains('active')", arg=tab)
+                        self.assertEqual(f"{index + 1:02d}", page.locator("#workspaceIndex").inner_text())
+                        self.assertFalse(page.locator(f"#{tab}").evaluate("el => el.inert"))
+                        box = page.locator(f"#{tab}").bounding_box()
+                        self.assertAlmostEqual(0, box["x"], delta=1)
+                        self.assertLessEqual(box["y"] + box["height"], height + 1)
+                        self.assertTrue(page.locator("#connLabel").is_visible())
+                    self.assertLessEqual(page.evaluate("document.documentElement.scrollWidth"), width)
+
+                # Keep the selected workspace aligned across the breakpoint.
+                page.set_viewport_size({"width": 1440, "height": 900})
+                self.assertAlmostEqual(0, page.locator("#config").bounding_box()["x"], delta=1)
+                page.locator("#chat-tab").focus()
+                page.keyboard.press("ArrowRight")
+                page.wait_for_function("document.getElementById('motion-tab').getAttribute('aria-selected') === 'true'")
+                self.assertEqual("02", page.locator("#workspaceIndex").inner_text())
+                self.assertTrue(page.locator("#chat").evaluate("el => el.inert"))
+
+                page.evaluate("window.socket.disconnect()")
+                page.wait_for_function("document.getElementById('connLabel').textContent === 'LINK OFFLINE'")
+                page.evaluate("window.socket.connect()")
+                page.wait_for_function("document.getElementById('connLabel').textContent === 'LINK ONLINE'")
+                self.assertEqual([], errors)
+            finally:
+                browser.close()
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.app, _socketio = create_app(theme="tars95", port=0)

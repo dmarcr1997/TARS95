@@ -628,12 +628,11 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   // Connection status
-  const connDot = document.getElementById('connDot');
   socket.on('connect', () => {
-    if (connDot) connDot.className = 'conn-dot';
+    window.setConsoleConnection('online');
   });
   socket.on('disconnect', () => {
-    if (connDot) connDot.className = 'conn-dot disconnected';
+    window.setConsoleConnection('offline');
     _audioQueue.length = 0;
     _audioDone = false;
     _audioPlaying = false;
@@ -643,11 +642,12 @@ document.addEventListener('DOMContentLoaded', function () {
     if (window.showToast) showToast('Connection lost — reconnecting...', 'error');
     // Socket.IO auto-reconnects — do NOT manually call socket.connect()
     // as that creates duplicate connections
-    if (connDot) connDot.className = 'conn-dot reconnecting';
   });
-  socket.on('reconnect_attempt', () => {
-    if (connDot) connDot.className = 'conn-dot reconnecting';
+  socket.on('connect_error', () => window.setConsoleConnection('offline'));
+  socket.io.on('reconnect_attempt', () => {
+    window.setConsoleConnection('reconnecting');
   });
+  socket.io.on('reconnect_failed', () => window.setConsoleConnection('offline'));
 
   function formatText(text) {
     if (!text) return '';
@@ -2750,6 +2750,8 @@ window.showToast = function (message, type, duration) {
 
   function checkMobile() {
     isMobile = mobileQuery.matches || landscapeQuery.matches;
+    const track = document.getElementById('swipeTrack');
+    if (track) track.style.transform = isMobile ? 'translateX(-' + (currentIndex * 100) + '%)' : '';
   }
   checkMobile();
   mobileQuery.addEventListener('change', checkMobile);

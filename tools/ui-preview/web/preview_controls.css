@@ -18,7 +18,7 @@
 .preview-console {
   position: fixed;
   z-index: 10020;
-  top: 64px;
+  top: calc(var(--t95-header-h, 0px) + var(--tab-h, 52px) + var(--t95-workspace-h, 0px) + 12px);
   right: 12px;
   width: 286px;
   color: var(--preview-paper);
@@ -107,6 +107,7 @@
 .preview-console__footer button { min-height: 24px; padding: 3px 10px; }
 
 .preview-readout {
+  pointer-events: none;
   position: fixed;
   z-index: 10010;
   right: 12px;
@@ -148,8 +149,12 @@
 @keyframes preview-state-pulse { 50% { opacity: .45; } }
 
 @media (max-width: 700px) {
-  .preview-console { top: 56px; right: 7px; width: min(270px, calc(100vw - 48px)); }
+  .preview-console { right: 7px; width: min(270px, calc(100vw - 48px)); }
   .preview-readout { right: 7px; bottom: 72px; max-width: calc(100vw - 14px); flex-wrap: wrap; }
+}
+
+@media (max-width: 768px), (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+  .preview-readout { bottom: calc(var(--mobile-nav-h, 62px) + 10px + env(safe-area-inset-bottom, 0px)); }
 }
 
 @media (prefers-reduced-motion: reduce) {

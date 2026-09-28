@@ -354,8 +354,8 @@
           <div class="readout-row"><span>BRANCH</span><span>V3</span></div>
           <div class="readout-row"><span>BASELINE</span><span>7593f8c</span></div>
           <div class="readout-row"><span>SURFACES</span><span>PYGAME + WEB</span></div>
-          <div class="readout-row"><span><i class="lamp amber"></i>BUILD STATE</span><span>IDLE + FAULT READY</span></div>
-          <div class="readout-row"><span>NEXT ACTION</span><span>UI-021</span></div>
+          <div class="readout-row"><span><i class="lamp amber"></i>BUILD STATE</span><span>WEB SHELL READY</span></div>
+          <div class="readout-row"><span>NEXT ACTION</span><span>UI-022</span></div>
         </aside>
       </div>
       <div class="stats">
@@ -453,8 +453,8 @@
             <tr data-phase="2" data-state="done"><td class="id">UI-020</td><td><span class="status">Done</span></td><td class="task"><b>Add TARS/95 idle and fault screens</b><small>Idle feels alive at low cost; warnings and faults override decoration with clear next actions.</small></td><td>Device</td><td class="commit">feat(ui): add idle and fault screens</td></tr>
 
             <tr class="phase-row" data-phase="3"><td colspan="5">Phase 3 — Bring the remote web console into the same timeline</td></tr>
-            <tr data-phase="3" data-state="next"><td class="id">UI-021</td><td><span class="status">Next</span></td><td class="task"><b>Replace web shell and navigation chrome</b><small>Desktop and mobile navigation preserve every route/tab and clearly show connection status.</small></td><td>Web</td><td class="commit">feat(webui): add TARS95 console shell</td></tr>
-            <tr data-phase="3" data-state="planned"><td class="id">UI-022</td><td><span class="status">Planned</span></td><td class="task"><b>Restyle chat and voice controls</b><small>Streaming, speaker labels, uploads, mic states, errors, and generated media remain functional.</small></td><td>Web</td><td class="commit">feat(webui): restyle chat console</td></tr>
+            <tr data-phase="3" data-state="done"><td class="id">UI-021</td><td><span class="status">Done</span></td><td class="task"><b>Replace web shell and navigation chrome</b><small>Desktop and mobile navigation preserve every route/tab and clearly show connection status.</small></td><td>Web</td><td class="commit">feat(webui): add TARS95 console shell</td></tr>
+            <tr data-phase="3" data-state="next"><td class="id">UI-022</td><td><span class="status">Next</span></td><td class="task"><b>Restyle chat and voice controls</b><small>Streaming, speaker labels, uploads, mic states, errors, and generated media remain functional.</small></td><td>Web</td><td class="commit">feat(webui): restyle chat console</td></tr>
             <tr data-phase="3" data-state="planned"><td class="id">UI-023</td><td><span class="status">Planned</span></td><td class="task"><b>Restyle motion workspace</b><small>Joystick, sequences, arms, legs, emergency actions, and 3D preview remain understandable.</small></td><td>Web</td><td class="commit">feat(webui): restyle motion workspace</td></tr>
             <tr data-phase="3" data-state="planned"><td class="id">UI-024</td><td><span class="status">Planned</span></td><td class="task"><b>Restyle character/emotion workspace</b><small>Emotion choices, character editing, sprite feedback, and save states fit the visual system.</small></td><td>Web</td><td class="commit">feat(webui): restyle character workspace</td></tr>
             <tr data-phase="3" data-state="planned"><td class="id">UI-025</td><td><span class="status">Planned</span></td><td class="task"><b>Restyle telemetry and memory dashboard</b><small>Stats, charts, graphs, logs, detail drawers, and editing keep strong hierarchy at dense information levels.</small></td><td>Web</td><td class="commit">feat(webui): restyle telemetry dashboard</td></tr>
@@ -525,6 +525,7 @@
             <div>UI-019</div><div>Audio diagnostics now expose a six-stage MIC / WAKE / SPEECH / TTS / NOISE / BARGE status chain above a corrected full-width timeline; desktop review uses a clearly labeled deterministic fixture, Pi operation retains the live microphone path, and all 24 smoke tests pass with zero hardware attempts.</div><div>READY</div>
             <div>UI-019R</div><div>Responsive scale now follows the limiting axis instead of height alone, preventing the installed 480×800 portrait display from inflating chrome and controls to 2.5×; all nine device apps, the launcher, and touch routing render across three physical size contracts, and all 25 smoke tests pass with zero hardware attempts.</div><div>READY</div>
             <div>UI-020</div><div>A shared state layer now gives Eyes a low-cost idle watch after 45 seconds and lets warning or fault conditions take over every app immediately; warning and fault screens keep the next safe action visible, route directly to Systems, remain responsive across all three physical size contracts, and all 26 smoke tests pass with zero hardware attempts.</div><div>READY</div>
+            <div>UI-021</div><div>Manila remote-console chrome adds labeled desktop navigation, a numbered workspace strip, persistent phone link status, and flat mobile controls. All five workspaces, keyboard navigation, desktop/phone resize, and Socket.IO disconnect/reconnect pass browser checks at 1440×900, 390×844, 844×390, and 320×640; off-screen panes no longer trap keyboard focus. Existing workspace controls and routes are preserved.</div><div>READY</div>
           </div>
           <div class="callout">Update the status row and ledger in the same commit as the work it records. The dashboard is the project record, not a second implementation stream.</div>
         </div>
