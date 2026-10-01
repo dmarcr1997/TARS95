@@ -61,7 +61,7 @@ class MotionGaitTests(unittest.TestCase):
         # Small bounded stride, no large gait pulse jumps, mirrored axes.
         for channel in range(4):
             pulses = [p for _, ch, p in self.writes if ch == channel]
-            self.assertLessEqual(max(abs(b - a) for a, b in zip(pulses, pulses[1:])), 2)
+            self.assertLessEqual(max(abs(b - a) for a, b in zip(pulses, pulses[1:])), 3)
         self.assertGreater(phases[3].target[3], 300)
         self.assertEqual(phases[8].target[2:], (300, 300))
 

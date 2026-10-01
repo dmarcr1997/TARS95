@@ -50,21 +50,23 @@ def forward_phases(servo):
     behind = [toward(neutral[i + 2], backward[i], .16) for i in range(2)]
     lh, rh, ll, rl = neutral
     return (
-        Phase("STAND", neutral, 1.0),
-        Phase("SHIFT LEFT", (extend[0], unload[1], ll, rl), 1.2),
-        Phase("LIFT RIGHT", (extend[0], lift[1], ll, rl), .8),
-        Phase("STEP RIGHT", (extend[0], lift[1], behind[0], ahead[1]), 1.0),
-        Phase("PLANT RIGHT", (lh, rh, behind[0], ahead[1]), 1.2),
+        # Pi trial now closes straight. Remove excess neutral dwell and
+        # shorten travel phases by 15%; preserve contact-settling pauses.
+        Phase("STAND", neutral, .4),
+        Phase("SHIFT LEFT", (extend[0], unload[1], ll, rl), 1.02),
+        Phase("LIFT RIGHT", (extend[0], lift[1], ll, rl), .68),
+        Phase("STEP RIGHT", (extend[0], lift[1], behind[0], ahead[1]), .85),
+        Phase("PLANT RIGHT", (lh, rh, behind[0], ahead[1]), 1.02),
         Phase("SETTLE RIGHT", (lh, rh, behind[0], ahead[1]), .25),
-        Phase("SHIFT RIGHT", (unload[0], extend[1], behind[0], ahead[1]), 1.2),
-        Phase("LIFT LEFT", (lift[0], extend[1], behind[0], ahead[1]), .8),
+        Phase("SHIFT RIGHT", (unload[0], extend[1], behind[0], ahead[1]), 1.02),
+        Phase("LIFT LEFT", (lift[0], extend[1], behind[0], ahead[1]), .68),
         # Close the trailing left leg while unloaded and advance over the
         # supporting right leg. Land with both swings already at neutral;
         # don't try to drag planted feet back from a second full stride.
-        Phase("CLOSE LEFT", (lift[0], extend[1], ll, rl), 1.0),
-        Phase("PLANT LEFT", neutral, 1.2),
+        Phase("CLOSE LEFT", (lift[0], extend[1], ll, rl), .85),
+        Phase("PLANT LEFT", neutral, 1.02),
         Phase("SETTLE LEFT", neutral, .25),
-        Phase("CENTER", neutral, 1.0),
+        Phase("CENTER", neutral, .15),
         Phase("SETTLE", neutral, .25),
     )
 
