@@ -17,6 +17,17 @@ class Phase:
     seconds: float
 
 
+def verify_outputs(servo):
+    """Read PWM registers; verifies controller state, not servo power/position."""
+    for channel in range(4):
+        expected = servo.pulse_to_duty_cycle(servo.servo_positions[channel])
+        actual = servo.pca.channels[channel].duty_cycle
+        # PCA9685 has 12-bit resolution; the library exposes 16-bit values.
+        if actual >> 4 != expected >> 4:
+            raise RuntimeError(f"PWM READBACK FAILED CH {channel}")
+    print("[MOTION] Leg PWM registers verified; servo power/position not measured", flush=True)
+
+
 def forward_phases(servo):
     """One small left/right cycle, with explicit planting/settling phases."""
     neutral = (servo.leftNeutralHeight, servo.rightNeutralHeight,
@@ -74,12 +85,14 @@ def run_forward(servo, on_phase=lambda name: None, *, clock=time.monotonic, slee
     if any(not isinstance(v, (int, float)) or not math.isfinite(v) or not 0 <= v <= 600 for v in positions):
         raise ValueError("INVALID START POSITION")
     servo.MOVING = True
+    sent = {}  # PWM remains active; don't resend identical pulses every frame.
     try:
         servo.signal_servo_activity()
         for phase in phases:
             if servo.emergency_stop_requested():
                 return False
             on_phase(phase.name)
+            print(f"[MOTION] {phase.name}: target PWM {phase.target}, duration {phase.seconds:.2f}s", flush=True)
             start = list(positions)
             started = clock()
             while True:
@@ -95,8 +108,11 @@ def run_forward(servo, on_phase=lambda name: None, *, clock=time.monotonic, slee
                     if servo.emergency_stop_requested():
                         return False
                     pulse = round(start[channel] + (phase.target[channel] - start[channel]) * eased)
+                    if sent.get(channel) == pulse:
+                        continue
                     if not servo.set_servo_pwm(channel, pulse):
                         raise RuntimeError(f"SERVO WRITE FAILED CH {channel}")
+                    sent[channel] = pulse
                     positions[channel] = pulse
                     # Keep only successfully sent positions, including on stop.
                     servo.servo_positions[channel] = pulse

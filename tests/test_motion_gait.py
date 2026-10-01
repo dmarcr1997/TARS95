@@ -119,19 +119,41 @@ class MotionGaitTests(unittest.TestCase):
         namespace = {}
         exec(compile(ast.Module(body=[backend_class], type_ignores=[]), str(path), 'exec'), namespace)
         backend = namespace['RobotMotionBackend']()
-        servo = SimpleNamespace(pca=object(), clear_emergency_stop=Mock())
+        servo = SimpleNamespace(pca=object(), MOVING=False, servo_positions={}, clear_emergency_stop=Mock())
         movements = Mock()
         root = ModuleType('modules')
         root.module_servoctl = servo
         root.module_movements = movements
         runner = Mock(return_value=True)
-        with patch.dict(sys.modules, {'modules': root, 'modules.module_motion_gait': SimpleNamespace(run_forward=runner)}):
+        verify = Mock()
+        with patch.dict(sys.modules, {'modules': root, 'modules.module_motion_gait': SimpleNamespace(run_forward=runner, verify_outputs=verify)}):
             backend.run('forward')
             runner.assert_called_once()
+            verify.assert_called_once_with(servo)
             movements.step_forward.assert_not_called()
             backend.run('backward')
             movements.step_backward.assert_called_once()
         self.assertIsNone(backend.phase)
+
+    def test_two_successive_commands_complete_without_stale_busy_or_redundant_writes(self):
+        self.assertTrue(self.run_gait())
+        first_count = len(self.writes)
+        self.assertTrue(self.run_gait())
+        self.assertFalse(self.servo.MOVING)
+        self.assertEqual(len(self.saved), 2)
+        for channel in range(4):
+            pulses = [p for _, ch, p in self.writes[:first_count] if ch == channel]
+            self.assertTrue(all(a != b for a, b in zip(pulses, pulses[1:])))
+        self.assertLess(first_count, 500)  # Previously ~2,200 writes per cycle.
+
+    def test_readback_detects_silent_controller_reset(self):
+        self.servo.pulse_to_duty_cycle = lambda pulse: pulse * 16
+        self.servo.pca = SimpleNamespace(channels=[SimpleNamespace(duty_cycle=p * 16)
+                                                  for p in self.servo.servo_positions.values()])
+        gait.verify_outputs(self.servo)
+        self.servo.pca.channels[2].duty_cycle = 0
+        with self.assertRaisesRegex(RuntimeError, 'PWM READBACK FAILED CH 2'):
+            gait.verify_outputs(self.servo)
 
 
 if __name__ == '__main__':

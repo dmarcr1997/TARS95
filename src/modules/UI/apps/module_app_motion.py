@@ -64,11 +64,19 @@ class RobotMotionBackend:
                 raise RuntimeError("SERVO CONTROLLER N/A")
         servoctl.clear_emergency_stop()
         if action == "forward":
-            from modules.module_motion_gait import run_forward
+            from modules.module_motion_gait import run_forward, verify_outputs
+            print(f"[MOTION] Forward start: moving={servoctl.MOVING}, positions={dict(servoctl.servo_positions)}", flush=True)
             try:
                 completed = run_forward(servoctl, on_phase=self._set_phase)
                 if not completed:
                     print("[MOTION] Forward gait cancelled", flush=True)
+                else:
+                    try:
+                        verify_outputs(servoctl)
+                    except Exception:
+                        servoctl.request_emergency_stop()
+                        raise
+                    print("[MOTION] Forward cycle ended; ready for next command", flush=True)
             finally:
                 self.phase = None
             return
