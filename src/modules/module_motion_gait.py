@@ -29,7 +29,7 @@ def verify_outputs(servo):
 
 
 def forward_phases(servo):
-    """One small left/right cycle, with explicit planting/settling phases."""
+    """Two forward steps followed by an unloaded closing step."""
     neutral = (servo.leftNeutralHeight, servo.rightNeutralHeight,
                servo.neutralLeftLeg, servo.neutralRightLeg)
     up = (servo.leftUpHeight, servo.rightUpHeight)
@@ -38,35 +38,36 @@ def forward_phases(servo):
     backward = (servo.backLeftLeg, servo.backRightLeg)
     def toward(start, end, fraction):
         return round(start + (end - start) * fraction)
-    # First Pi trial produced no useful movement; increase clearance. Use 16% of
-    # directional travel for stride, 30% for weight transfer, and 45% for
-    # unloaded-leg lift. These are fractions of neutral-to-endpoint travel,
-    # not fractions of the entire servo range. Mirrored servo axes use
-    # their own calibrated endpoints rather than assumed pulse directions.
-    extend = [toward(neutral[i], down[i], .30) for i in range(2)]
-    unload = [toward(neutral[i], up[i], .20) for i in range(2)]
-    lift = [toward(neutral[i], up[i], .45) for i in range(2)]
-    ahead = [toward(neutral[i + 2], forward[i], .16) for i in range(2)]
-    behind = [toward(neutral[i + 2], backward[i], .16) for i in range(2)]
+    # Use calibrated neutral-to-endpoint travel on each mirrored axis.
+    # Both legs take a full stride; a third, unloaded swing closes the stance.
+    extend = [toward(neutral[i], down[i], .45) for i in range(2)]
+    unload = [toward(neutral[i], up[i], .25) for i in range(2)]
+    lift = [toward(neutral[i], up[i], .75) for i in range(2)]
+    ahead = [toward(neutral[i + 2], forward[i], .40) for i in range(2)]
+    behind = [toward(neutral[i + 2], backward[i], .40) for i in range(2)]
     lh, rh, ll, rl = neutral
+    right_step = (behind[0], ahead[1])
+    left_step = (ahead[0], behind[1])
     return (
-        # Pi trial now closes straight. Remove excess neutral dwell and
-        # shorten travel phases by 15%; preserve contact-settling pauses.
         Phase("STAND", neutral, .4),
-        Phase("SHIFT LEFT", (extend[0], unload[1], ll, rl), 1.02),
-        Phase("LIFT RIGHT", (extend[0], lift[1], ll, rl), .68),
-        Phase("STEP RIGHT", (extend[0], lift[1], behind[0], ahead[1]), .85),
-        Phase("PLANT RIGHT", (lh, rh, behind[0], ahead[1]), 1.02),
-        Phase("SETTLE RIGHT", (lh, rh, behind[0], ahead[1]), .25),
-        Phase("SHIFT RIGHT", (unload[0], extend[1], behind[0], ahead[1]), 1.02),
-        Phase("LIFT LEFT", (lift[0], extend[1], behind[0], ahead[1]), .68),
-        # Close the trailing left leg while unloaded and advance over the
-        # supporting right leg. Land with both swings already at neutral;
-        # don't try to drag planted feet back from a second full stride.
-        Phase("CLOSE LEFT", (lift[0], extend[1], ll, rl), .85),
-        Phase("PLANT LEFT", neutral, 1.02),
-        Phase("SETTLE LEFT", neutral, .25),
-        Phase("CENTER", neutral, .15),
+        Phase("SHIFT LEFT", (extend[0], unload[1], ll, rl), .8),
+        Phase("LIFT RIGHT", (extend[0], lift[1], ll, rl), .7),
+        Phase("STEP RIGHT", (extend[0], lift[1], *right_step), 1.0),
+        Phase("PLANT RIGHT", (lh, rh, *right_step), .8),
+        Phase("SETTLE RIGHT", (lh, rh, *right_step), .25),
+        Phase("SHIFT RIGHT", (unload[0], extend[1], *right_step), .8),
+        Phase("LIFT LEFT", (lift[0], extend[1], *right_step), .7),
+        # Left passes the supporting right foot instead of just closing.
+        # The support axis rolls backward as the lifted leg swings forward.
+        Phase("STEP LEFT", (lift[0], extend[1], *left_step), 1.4),
+        Phase("PLANT LEFT", (lh, rh, *left_step), 1.0),
+        Phase("SETTLE LEFT", (lh, rh, *left_step), .25),
+        Phase("SHIFT LEFT TO CLOSE", (extend[0], unload[1], *left_step), .8),
+        Phase("LIFT RIGHT TO CLOSE", (extend[0], lift[1], *left_step), .7),
+        # Close only while the trailing right leg is unloaded. Both swing
+        # axes reach neutral before landing, avoiding a planted-foot reset.
+        Phase("CLOSE RIGHT", (extend[0], lift[1], ll, rl), 1.0),
+        Phase("PLANT RIGHT TO CLOSE", neutral, .8),
         Phase("SETTLE", neutral, .25),
     )
 

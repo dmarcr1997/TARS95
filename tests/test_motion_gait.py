@@ -58,21 +58,35 @@ class MotionGaitTests(unittest.TestCase):
         self.assertFalse(self.servo.MOVING)
         self.assertFalse(self.stopped)
         self.assertEqual(len(self.saved), 1)
-        # Small bounded stride, no large gait pulse jumps, mirrored axes.
+        # Larger stride remains eased, without abrupt pulse jumps.
         for channel in range(4):
             pulses = [p for _, ch, p in self.writes if ch == channel]
-            self.assertLessEqual(max(abs(b - a) for a, b in zip(pulses, pulses[1:])), 3)
+            self.assertLessEqual(max(abs(b - a) for a, b in zip(pulses, pulses[1:])), 4)
         self.assertGreater(phases[3].target[3], 300)
-        self.assertEqual(phases[8].target[2:], (300, 300))
+        self.assertLess(phases[8].target[2], 300)
+        self.assertLess(phases[8].target[3], 300)
 
-    def test_trailing_leg_closes_before_planting_without_grounded_swing_reset(self):
+    def test_both_legs_step_with_clearance_then_close_before_planting(self):
         phases = gait.forward_phases(self.servo)
-        closing = next(p for p in phases if p.name == 'CLOSE LEFT')
+        right = next(p for p in phases if p.name == 'STEP RIGHT')
+        left = next(p for p in phases if p.name == 'STEP LEFT')
+        self.assertGreater(right.target[3] - 300, 50)
+        self.assertGreater(300 - left.target[2], 50)
+        self.assertGreater(right.target[1] - 350, 80)
+        self.assertGreater(350 - left.target[0], 80)
+        # Left passes the right foot; it does not merely return to neutral.
+        self.assertGreater(right.target[2], 300)
+        self.assertLess(left.target[3], 300)
+        closing = next(p for p in phases if p.name == 'CLOSE RIGHT')
         self.assertEqual(closing.target[2:], (300, 300))
-        self.assertLess(closing.target[0], self.servo.leftNeutralHeight)
-        self.assertLess(closing.target[1], self.servo.rightNeutralHeight)
-        planting_index = next(i for i, p in enumerate(phases) if p.name == 'PLANT LEFT')
+        self.assertGreater(closing.target[0], self.servo.leftNeutralHeight)
+        self.assertGreater(closing.target[1], self.servo.rightNeutralHeight)
+        planting_index = next(i for i, p in enumerate(phases) if p.name == 'PLANT RIGHT TO CLOSE')
         self.assertTrue(all(p.target == (350, 350, 300, 300) for p in phases[planting_index:]))
+        # Transfer and lift preserve swing position; landings only lower height.
+        for i, phase in enumerate(phases):
+            if phase.name.startswith(('SHIFT', 'LIFT', 'PLANT')):
+                self.assertEqual(phase.target[2:], phases[i - 1].target[2:])
 
     def test_stop_mid_phase_prevents_any_later_writes(self):
         def stopping_sleep(seconds):
@@ -153,7 +167,7 @@ class MotionGaitTests(unittest.TestCase):
         for channel in range(4):
             pulses = [p for _, ch, p in self.writes[:first_count] if ch == channel]
             self.assertTrue(all(a != b for a, b in zip(pulses, pulses[1:])))
-        self.assertLess(first_count, 500)  # Previously ~2,200 writes per cycle.
+        self.assertLess(first_count, 1000)  # Skip unchanged PWM despite larger excursions.
 
     def test_readback_detects_silent_controller_reset(self):
         self.servo.pulse_to_duty_cycle = lambda pulse: pulse * 16
