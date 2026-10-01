@@ -58,9 +58,12 @@ def forward_phases(servo):
         Phase("SETTLE RIGHT", (lh, rh, behind[0], ahead[1]), .25),
         Phase("SHIFT RIGHT", (unload[0], extend[1], behind[0], ahead[1]), 1.2),
         Phase("LIFT LEFT", (lift[0], extend[1], behind[0], ahead[1]), .8),
-        Phase("STEP LEFT", (lift[0], extend[1], ahead[0], behind[1]), 1.0),
-        Phase("PLANT LEFT", (lh, rh, ahead[0], behind[1]), 1.2),
-        Phase("SETTLE LEFT", (lh, rh, ahead[0], behind[1]), .25),
+        # Close the trailing left leg while unloaded and advance over the
+        # supporting right leg. Land with both swings already at neutral;
+        # don't try to drag planted feet back from a second full stride.
+        Phase("CLOSE LEFT", (lift[0], extend[1], ll, rl), 1.0),
+        Phase("PLANT LEFT", neutral, 1.2),
+        Phase("SETTLE LEFT", neutral, .25),
         Phase("CENTER", neutral, 1.0),
         Phase("SETTLE", neutral, .25),
     )

@@ -63,7 +63,16 @@ class MotionGaitTests(unittest.TestCase):
             pulses = [p for _, ch, p in self.writes if ch == channel]
             self.assertLessEqual(max(abs(b - a) for a, b in zip(pulses, pulses[1:])), 2)
         self.assertGreater(phases[3].target[3], 300)
-        self.assertLess(phases[8].target[2], 300)
+        self.assertEqual(phases[8].target[2:], (300, 300))
+
+    def test_trailing_leg_closes_before_planting_without_grounded_swing_reset(self):
+        phases = gait.forward_phases(self.servo)
+        closing = next(p for p in phases if p.name == 'CLOSE LEFT')
+        self.assertEqual(closing.target[2:], (300, 300))
+        self.assertLess(closing.target[0], self.servo.leftNeutralHeight)
+        self.assertLess(closing.target[1], self.servo.rightNeutralHeight)
+        planting_index = next(i for i, p in enumerate(phases) if p.name == 'PLANT LEFT')
+        self.assertTrue(all(p.target == (350, 350, 300, 300) for p in phases[planting_index:]))
 
     def test_stop_mid_phase_prevents_any_later_writes(self):
         def stopping_sleep(seconds):
