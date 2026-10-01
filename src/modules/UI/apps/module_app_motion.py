@@ -39,6 +39,9 @@ class RobotMotionBackend:
 
     label = "LIVE / DEFERRED"
 
+    def __init__(self):
+        self.phase = None
+
     _ACTIONS = {
         "forward": "step_forward",
         "backward": "step_backward",
@@ -60,8 +63,21 @@ class RobotMotionBackend:
                 servoctl.pca = None
                 raise RuntimeError("SERVO CONTROLLER N/A")
         servoctl.clear_emergency_stop()
+        if action == "forward":
+            from modules.module_motion_gait import run_forward
+            try:
+                completed = run_forward(servoctl, on_phase=self._set_phase)
+                if not completed:
+                    print("[MOTION] Forward gait cancelled", flush=True)
+            finally:
+                self.phase = None
+            return
         function_name = self._ACTIONS[action]
         getattr(movements, function_name)()
+
+    def _set_phase(self, name):
+        self.phase = name
+        print(f"[MOTION] Forward phase: {name}", flush=True)
 
     def emergency_stop(self) -> None:
         from modules import module_servoctl as servoctl
@@ -140,6 +156,10 @@ class MotionApp:
                 self._worker_error = None
             elif not self._servos_disabled and not self._status.startswith("STOP"):
                 self._status = "ARMED // READY" if self._armed else "OUTPUT LOCKED"
+        elif self._busy and not self._status.startswith("STOP") and not self._servos_disabled:
+            phase = getattr(self.motion_backend, "phase", None)
+            if phase:
+                self._status = f"FWD // {phase}"
 
     def handle_event(self, event: pygame.event.Event) -> bool:
         if event.type not in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP):
@@ -273,7 +293,7 @@ class MotionApp:
                 self._draw_control(button_rect, "STOP", "CUT OUTPUT", FAULT_RED, True, scale)
             else:
                 labels = {
-                    "forward": ("FORWARD", "STEP +Y"),
+                    "forward": ("FORWARD", "EASED CYCLE"),
                     "backward": ("REVERSE", "STEP -Y"),
                     "left": ("LEFT", "TURN -X"),
                     "right": ("RIGHT", "TURN +X"),
