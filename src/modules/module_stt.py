@@ -599,8 +599,11 @@ class STTManager:
             except Exception:
                 pass
 
+            recording_started = time.monotonic()
             for _ in range(self.MAX_RECORDING_FRAMES):
                 data, _ = mic.read(4000)
+                if self._listening_expired(recording_started, detected_speech):
+                    return None, 0
 
                 # Abort recording if TTS just started — don't pick up TARS's own voice
                 if is_tts_playing():
@@ -648,6 +651,7 @@ class STTManager:
 
         if speech_frames < min_speech_frames or not audio_chunks:
             return None, 0
+        set_tars_state(TarsState.THINKING)
         # Stash float32 audio for speaker ID — exclude pre-roll chunks which
         # may contain TARS's own TTS response (using the user's voice model),
         # contaminating the speaker embedding with the wrong voice.
@@ -746,6 +750,21 @@ class STTManager:
 
     # === Transcription Dispatch ===
 
+    def _listening_expired(self, started, detected_speech):
+        """Bound capture independently of VAD progress and audio delivery speed.
+
+        A blocking mic read can add up to its five-second timeout. Discard an
+        overlong turn rather than silently save a truncated project note.
+        """
+        elapsed = time.monotonic() - started
+        limit = 25.0 if detected_speech else 6.0
+        if self.is_paused() or self.shutdown_event.is_set() or elapsed >= limit:
+            queue_message("STT: Listening ended (cancelled or time limit); returning to wake word.")
+            _, clear_bar = self._get_progress_bar()
+            clear_bar()
+            return True
+        return False
+
     def _transcribe_utterance(self):
         """Transcribe the user's utterance using the selected STT processor."""
         try:
@@ -783,10 +802,17 @@ class STTManager:
                 # Silence ends the dictation session rather than capturing a
                 # later, unrelated conversation as the pending note.
                 from modules.module_note_commands import get_voice_note_commands
-                get_voice_note_commands().end_session()
+                commands = get_voice_note_commands()
+                if commands.awaiting_input():
+                    queue_message("NOTES: No completed dictation; pending note cancelled.")
+                commands.end_session()
+                set_tars_state(TarsState.STANDBY)
             return result
         except Exception as e:
             queue_message(f"ERROR: Transcription failed: {e}")
+            from modules.module_note_commands import get_voice_note_commands
+            get_voice_note_commands().end_session()
+            set_tars_state(TarsState.STANDBY)
             return None
 
     # === Wake Word Gates ===
@@ -1092,6 +1118,8 @@ class STTManager:
         """Denoise + transcribe int16 audio chunks with sherpa-onnx. Returns transcript string or None."""
         if not audio_chunks:
             return None
+
+        set_tars_state(TarsState.THINKING)
         audio_data = self._chunks_to_float32(audio_chunks)
         audio_data = self._denoise_audio(audio_data, sample_rate)
         try:
@@ -1196,13 +1224,16 @@ class STTManager:
             except Exception:
                 pass
 
+            recording_started = time.monotonic()
             for _ in range(self.MAX_RECORDING_FRAMES):
                 data, _ = mic.read(4000)
+                if self._listening_expired(recording_started, detected_speech):
+                    return None
 
                 # Abort recording if TTS just started — don't pick up TARS's own voice
                 if is_tts_playing():
                     set_tars_state(TarsState.STANDBY)
-                    return None, 0
+                    return None
 
                 is_silence, detected_speech, silent_frames = vad_func(data, detected_speech, silent_frames)
 

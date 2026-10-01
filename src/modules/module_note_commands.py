@@ -41,6 +41,10 @@ class NoteCommands:
         with self.lock:
             self.pending = None
 
+    def awaiting_input(self):
+        with self.lock:
+            return self.pending is not None
+
     def handle(self, text, request_id=None):
         with self.lock:
             if request_id and request_id in self.replies:

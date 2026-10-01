@@ -124,7 +124,8 @@ class NoteCommandTests(unittest.TestCase):
         cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "STTManager")
         methods = [n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name in
                    ("_emit_result", "_transcribe_utterance")]
-        namespace = {"json": json, "uuid4": __import__("uuid").uuid4, "queue_message": Mock()}
+        namespace = {"json": json, "uuid4": __import__("uuid").uuid4, "queue_message": Mock(),
+                     "set_tars_state": Mock(), "TarsState": SimpleNamespace(STANDBY="standby")}
         exec(compile(ast.Module(body=methods, type_ignores=[]), "module_stt.py", "exec"), namespace)
         fake = SimpleNamespace(_is_meaningful_text=lambda text: True, _last_audio_float32=None,
                                utterance_callback=Mock())
@@ -146,6 +147,7 @@ class NoteCommandTests(unittest.TestCase):
             namespace["_transcribe_utterance"](fake)
         self.assertIsNone(self.commands.pending)
         fake.post_utterance_callback.assert_not_called()
+        namespace["set_tars_state"].assert_called_with("standby")
 
     def test_real_utterance_callback_routes_notes_before_shutdown_and_llm(self):
         # Execute the actual callback with its imports replaced; importing the
@@ -160,11 +162,12 @@ class NoteCommandTests(unittest.TestCase):
         root.module_llm = llm
         async def speak(*args):
             pass
-        namespace = dict(json=json, ui_manager=Mock(), queue_message=Mock(), set_tars_state=Mock(),
+        namespace = dict(json=json, ui_manager=Mock(), stt_manager=SimpleNamespace(), queue_message=Mock(), set_tars_state=Mock(),
                          TarsState=SimpleNamespace(TALKING="talking", LISTENING="listening"),
                          CONFIG={"CHAR": {"character_name": "TARS"}, "TTS": {"ttsoption": "test"}},
                          play_audio_chunks=speak, asyncio=__import__("asyncio"))
-        route = SimpleNamespace(route_voice_note=lambda text, request_id: self.commands.handle(text, request_id))
+        route = SimpleNamespace(route_voice_note=lambda text, request_id: self.commands.handle(text, request_id),
+                                get_voice_note_commands=lambda: self.commands)
         with patch.dict(sys.modules, {"modules": root, "modules.module_speed": speed,
                                      "modules.module_llm": llm, "modules.module_note_commands": route}):
             exec(code, namespace)
@@ -173,6 +176,50 @@ class NoteCommandTests(unittest.TestCase):
         namespace["queue_message"].assert_any_call("NOTES: Saved to project X.")
         self.assertEqual(self.store.list_notes("X")[0].transcript, "shutdown pc")
         self.assertEqual(llm.mock_calls, [])
+        self.assertTrue(namespace['stt_manager']._note_session_complete)
+
+    def test_completed_note_does_not_open_another_listening_round(self):
+        tree = ast.parse((ROOT / 'src/modules/module_main.py').read_text(encoding='utf-8'))
+        callback = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == 'post_utterance_callback')
+        stt = SimpleNamespace(_note_session_complete=True, _transcribe_utterance=Mock())
+        namespace = dict(stt_manager=stt, set_tars_state=Mock(), queue_message=Mock(),
+                         TarsState=SimpleNamespace(STANDBY='standby'))
+        exec(compile(ast.Module(body=[callback], type_ignores=[]), 'module_main.py', 'exec'), namespace)
+        namespace['post_utterance_callback']()
+        stt._transcribe_utterance.assert_not_called()
+        self.assertFalse(stt._note_session_complete)
+        namespace['set_tars_state'].assert_called_once_with('standby')
+
+    def test_real_capture_loop_bounds_stalled_audio_and_continuous_noise(self):
+        tree = ast.parse((ROOT / 'src/modules/module_stt.py').read_text(encoding='utf-8'))
+        cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'STTManager')
+        methods = [n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name in
+                   ('_record_audio_chunks', '_listening_expired')]
+        for speech, step, maximum_reads in ((False, 5.0, 2), (True, .25, 100)):
+            with self.subTest(speech=speech):
+                clock = [0.0]
+                def read(_):
+                    clock[0] += step
+                    return b'frame', False
+                mic = Mock()
+                mic.__enter__ = Mock(return_value=mic)
+                mic.__exit__ = Mock(return_value=False)
+                mic.read = Mock(side_effect=read)
+                namespace = dict(time=SimpleNamespace(monotonic=lambda: clock[0]),
+                                 ResamplingInputStream=lambda **kw: mic, is_tts_playing=lambda: False,
+                                 queue_message=Mock(), set_tars_state=Mock())
+                exec(compile(ast.Module(body=methods, type_ignores=[]), 'module_stt.py', 'exec'), namespace)
+                vad = lambda data, detected, silent: (False, speech, 0)
+                fake = SimpleNamespace(MAX_SILENT_FRAMES=15, MAX_RECORDING_FRAMES=1000,
+                    vadmethod='rms', smart_turn_session=None, smart_turn_audio_buffer=[],
+                    _is_silence_detected_rms=vad, _is_silence_detected_silero=vad,
+                    _is_silence_detected_sherpa_onnx=vad, is_paused=lambda: False,
+                    shutdown_event=SimpleNamespace(is_set=lambda: False),
+                    _get_progress_bar=lambda: (Mock(), Mock()))
+                fake._listening_expired = lambda start, detected: namespace['_listening_expired'](fake, start, detected)
+                with patch.dict(sys.modules, {'modules.module_tts': SimpleNamespace(needs_mic_flush=lambda: False, clear_mic_flush=lambda: None)}):
+                    self.assertEqual(namespace['_record_audio_chunks'](fake), (None, 0))
+                self.assertLessEqual(mic.read.call_count, maximum_reads)
 
 
 if __name__ == "__main__":

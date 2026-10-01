@@ -135,6 +135,9 @@ def utterance_callback(message):
         note_reply = route_voice_note(message_dict['text'], message_dict.get('request_id'))
         queue_message(f"VOICE ROUTE: {'project_notes' if note_reply is not None else 'conversation'}")
         if note_reply is not None:
+            from modules.module_note_commands import get_voice_note_commands
+            if stt_manager:
+                stt_manager._note_session_complete = not get_voice_note_commands().awaiting_input()
             character_name = CONFIG['CHAR']['character_name']
             queue_message(f"NOTES: {note_reply}")
             if ui_manager:
@@ -553,6 +556,12 @@ def post_utterance_callback():
     Restart listening for another utterance after handling the current one.
     """
     global stt_manager
+
+    if getattr(stt_manager, '_note_session_complete', False):
+        stt_manager._note_session_complete = False
+        set_tars_state(TarsState.STANDBY)
+        queue_message("NOTES: Session complete; returning to wake word.")
+        return
 
     # Check if radio is active — if so, go back to wake word mode
     try:
