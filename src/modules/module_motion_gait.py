@@ -27,26 +27,28 @@ def forward_phases(servo):
     backward = (servo.backLeftLeg, servo.backRightLeg)
     def toward(start, end, fraction):
         return round(start + (end - start) * fraction)
-    # Start conservatively: 8% of directional travel for stride, 10% for
-    # weight transfer, 12% for unloaded-leg lift. Mirrored servo axes use
+    # First Pi trial produced no useful movement; increase clearance. Use 16% of
+    # directional travel for stride, 30% for weight transfer, and 45% for
+    # unloaded-leg lift. These are fractions of neutral-to-endpoint travel,
+    # not fractions of the entire servo range. Mirrored servo axes use
     # their own calibrated endpoints rather than assumed pulse directions.
-    extend = [toward(neutral[i], down[i], .10) for i in range(2)]
-    unload = [toward(neutral[i], up[i], .06) for i in range(2)]
-    lift = [toward(neutral[i], up[i], .12) for i in range(2)]
-    ahead = [toward(neutral[i + 2], forward[i], .08) for i in range(2)]
-    behind = [toward(neutral[i + 2], backward[i], .08) for i in range(2)]
+    extend = [toward(neutral[i], down[i], .30) for i in range(2)]
+    unload = [toward(neutral[i], up[i], .20) for i in range(2)]
+    lift = [toward(neutral[i], up[i], .45) for i in range(2)]
+    ahead = [toward(neutral[i + 2], forward[i], .16) for i in range(2)]
+    behind = [toward(neutral[i + 2], backward[i], .16) for i in range(2)]
     lh, rh, ll, rl = neutral
     return (
         Phase("STAND", neutral, 1.0),
-        Phase("SHIFT LEFT", (extend[0], unload[1], ll, rl), .8),
-        Phase("LIFT RIGHT", (extend[0], lift[1], ll, rl), .6),
+        Phase("SHIFT LEFT", (extend[0], unload[1], ll, rl), 1.2),
+        Phase("LIFT RIGHT", (extend[0], lift[1], ll, rl), .8),
         Phase("STEP RIGHT", (extend[0], lift[1], behind[0], ahead[1]), 1.0),
-        Phase("PLANT RIGHT", (lh, rh, behind[0], ahead[1]), .8),
+        Phase("PLANT RIGHT", (lh, rh, behind[0], ahead[1]), 1.2),
         Phase("SETTLE RIGHT", (lh, rh, behind[0], ahead[1]), .25),
-        Phase("SHIFT RIGHT", (unload[0], extend[1], behind[0], ahead[1]), .8),
-        Phase("LIFT LEFT", (lift[0], extend[1], behind[0], ahead[1]), .6),
+        Phase("SHIFT RIGHT", (unload[0], extend[1], behind[0], ahead[1]), 1.2),
+        Phase("LIFT LEFT", (lift[0], extend[1], behind[0], ahead[1]), .8),
         Phase("STEP LEFT", (lift[0], extend[1], ahead[0], behind[1]), 1.0),
-        Phase("PLANT LEFT", (lh, rh, ahead[0], behind[1]), .8),
+        Phase("PLANT LEFT", (lh, rh, ahead[0], behind[1]), 1.2),
         Phase("SETTLE LEFT", (lh, rh, ahead[0], behind[1]), .25),
         Phase("CENTER", neutral, 1.0),
         Phase("SETTLE", neutral, .25),
