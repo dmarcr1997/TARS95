@@ -129,6 +129,25 @@ def utterance_callback(message):
 
         user_text = message_dict['text'].strip()
 
+        # Literal dictation must be consumed before memory, shutdown shortcuts,
+        # or LLM tools can interpret words inside a project note as commands.
+        from modules.module_note_commands import route_voice_note
+        note_reply = route_voice_note(message_dict['text'], message_dict.get('request_id'))
+        queue_message(f"VOICE ROUTE: {'project_notes' if note_reply is not None else 'conversation'}")
+        if note_reply is not None:
+            character_name = CONFIG['CHAR']['character_name']
+            queue_message(f"NOTES: {note_reply}")
+            if ui_manager:
+                ui_manager.update_data(CONFIG['CHAR'].get('user_name', 'User'), user_text, CONFIG['CHAR'].get('user_name', 'User'))
+                ui_manager.update_data(character_name, note_reply, character_name)
+            set_tars_state(TarsState.TALKING)
+            try:
+                asyncio.run(play_audio_chunks(note_reply, CONFIG['TTS']['ttsoption']))
+            finally:
+                set_tars_state(TarsState.LISTENING)
+                speed.stop('total')
+            return
+
         # Kick off memory embedding in background so it's ready by prompt-build time
         if memory_manager and memory_manager.long_mem_use and hasattr(memory_manager, 'prefetch_embedding'):
             memory_manager.prefetch_embedding(user_text)
@@ -568,6 +587,10 @@ def initialize_managers(mem_manager, char_manager, stt_mgr, ui_mgr, shutdown_evt
     ui_manager = ui_mgr
     shutdown_event = shutdown_evt
     battery_module = battery_mod
+    from modules.module_skills import get_skill_manager
+    skills = get_skill_manager()
+    note_status = 'enabled' if skills and skills.is_enabled('project_notes') else 'disabled or unavailable'
+    queue_message(f"LOAD: AI-002 local note router ready ({note_status})")
 
 def startup_initialization():
     try:

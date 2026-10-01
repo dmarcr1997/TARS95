@@ -84,6 +84,10 @@ class ProjectNotesStore:
                 );
                 CREATE INDEX IF NOT EXISTS notes_by_project
                     ON notes(project_id, sequence);
+                CREATE TABLE IF NOT EXISTS note_requests (
+                    request_id TEXT PRIMARY KEY,
+                    note_id TEXT NOT NULL REFERENCES notes(id)
+                );
             """)
 
     @contextmanager
@@ -98,12 +102,29 @@ class ProjectNotesStore:
         finally:
             db.close()
 
-    def add_note(self, project, transcript):
+    def add_note(self, project, transcript, request_id=None):
         """Atomically create/find a project and save one note. Return a Note."""
         name, key = _project_name(project)
         if not isinstance(transcript, str) or not transcript.strip():
             raise ValueError("Note transcript must contain text")
         with self._connect() as db:
+            # Serialize duplicate deliveries with their original write, including
+            # across processes. Existing databases gain the mapping table above.
+            db.execute("BEGIN IMMEDIATE")
+            if request_id is not None:
+                if not isinstance(request_id, str) or not request_id:
+                    raise ValueError("Request ID must be nonempty text")
+                previous = db.execute(
+                    "SELECT n.id, n.project_id, p.name AS project, n.transcript, n.created_at "
+                    "FROM note_requests r JOIN notes n ON n.id = r.note_id "
+                    "JOIN projects p ON p.id = n.project_id WHERE r.request_id = ?",
+                    (request_id,),
+                ).fetchone()
+                if previous is not None:
+                    note = self._note(previous)
+                    if _project_name(note.project)[1] != key or note.transcript != transcript:
+                        raise ValueError("Request ID already belongs to a different note")
+                    return note
             db.execute(
                 "INSERT INTO projects(id, name, name_key) VALUES (?, ?, ?) "
                 "ON CONFLICT(name_key) DO NOTHING", (uuid4().hex, name, key),
@@ -115,6 +136,8 @@ class ProjectNotesStore:
                 "INSERT INTO notes(id, project_id, transcript, created_at) VALUES (?, ?, ?, ?)",
                 (note.id, note.project_id, note.transcript, note.created_at),
             )
+            if request_id is not None:
+                db.execute("INSERT INTO note_requests VALUES (?, ?)", (request_id, note.id))
         return note
 
     def list_projects(self):

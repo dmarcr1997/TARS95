@@ -18,6 +18,7 @@ import wave
 import json
 import sys
 import tempfile
+from uuid import uuid4
 from concurrent.futures import ThreadPoolExecutor, Future
 from difflib import SequenceMatcher
 from io import BytesIO
@@ -695,7 +696,10 @@ class STTManager:
             except Exception:
                 pass
 
-        result = {"text": text}
+        result = {"text": text, "request_id": uuid4().hex}
+        # Only expose transcript text in explicitly enabled debug mode.
+        if getattr(self, 'DEBUG', False):
+            queue_message(f"DEBUG STT: Recognized {text!r}")
         if extra:
             result.update(extra)
         if self.utterance_callback:
@@ -775,6 +779,11 @@ class STTManager:
 
             if self.post_utterance_callback and result:
                 self.post_utterance_callback()
+            if not result:
+                # Silence ends the dictation session rather than capturing a
+                # later, unrelated conversation as the pending note.
+                from modules.module_note_commands import get_voice_note_commands
+                get_voice_note_commands().end_session()
             return result
         except Exception as e:
             queue_message(f"ERROR: Transcription failed: {e}")
@@ -1146,6 +1155,9 @@ class STTManager:
 
         def _preemptive_llm(text):
             try:
+                from modules.module_note_commands import get_voice_note_commands
+                if get_voice_note_commands().claims(text):
+                    return
                 preemptive_result[0] = self.preemptive_llm_callback(text)
             except Exception as e:
                 queue_message(f"WARN: Preemptive LLM failed: {e}")
